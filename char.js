@@ -712,7 +712,7 @@ function TelegramGerraCharts(initialData, type){
 			var itemsDiff = this.top - this.low
 
 			if(itemsDiff !== this.itemsDiff){
-				var animation = new Animation(this.itemsDiff, itemsDiff, 300, performance.now())
+				var animation = new Animation(this.itemsDiff, itemsDiff, 300, appTime || 0)
 
 				if(this.textAnimation){
 					// this.textAnimation.update(itemsDiff)
@@ -721,9 +721,9 @@ function TelegramGerraCharts(initialData, type){
 
 					this.prevS = this.itemsDiff
 					if(itemsDiff > this.itemsDiff){
-						this.textAnimation = new Animation(0, -60, 400, performance.now())
+						this.textAnimation = new Animation(0, -60, 400, appTime || 0)
 					}else{
-						this.textAnimation = new Animation(0, 60, 400, performance.now())
+						this.textAnimation = new Animation(0, 60, 400, appTime || 0)
 					}
 				}
 
