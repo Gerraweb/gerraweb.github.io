@@ -743,9 +743,11 @@ function TelegramGerraCharts(initialData, type){
 		this.render = function(){
 			ctx.fillStyle = "#8E8E93"
 
+
+
 			if(this.animation){
 
-				var d = this.animation.animate(performance.now())
+				var d = this.animation.animate(appTime || 0)
 
 				if(d === false){
 					this.animation = null
@@ -759,7 +761,7 @@ function TelegramGerraCharts(initialData, type){
 
 			if(this.textAnimation){
 				if(this.textAnimation){
-					var d = this.textAnimation.animate(performance.now())
+					var d = this.textAnimation.animate(appTime || 0)
 				}
 
 				if(d === false){
