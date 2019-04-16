@@ -11,12 +11,16 @@ function TelegramGerraCharts(initialData, type){
 	document.body.appendChild(wrapper)
 
 	var canvas = document.createElement('canvas');
+	var labelsContainer = document.createElement('div');
+	labelsContainer.classList.add('labelsContainer')
 
 	wrapper.appendChild(canvas)
+	wrapper.appendChild(labelsContainer)
 
 	var ctx = canvas.getContext('2d');
-
 	var dpx = window.devicePixelRatio;
+
+	var FONT = 10 * dpx + 'px Arial'
 
 	var HEIGHT = 0 
 	var WIDTH = 0
@@ -27,6 +31,8 @@ function TelegramGerraCharts(initialData, type){
 	var Y_LABELS_OFFSET = 80 * dpx
 	var Y_LABELS_BP = 6 * dpx
 	var Y_LABELS_RP = 30 * dpx
+	var CHART_LW = 2 * dpx
+	var MAP_LW = 1 * dpx
 
 	var canvasBounds = {}
 
@@ -47,20 +53,23 @@ function TelegramGerraCharts(initialData, type){
 	var mouseX = 0
 	var mouseEvent = 'NONE'
 
+    var MODAL_ML = -25;
+    var MODAL_MT = !('ontouchstart' in window) ? 8 : 40;
+
+
 	setInitialData()
 
 	function onMouseMove(e){
 
 		var newMouseX = (e.clientX - canvasBounds.left) * dpx
 
-		// if(mouseX > 0 && mouseX < canvasBounds.width && mouseY > 0 && mouseY < canvasBounds.height - previewHeight){
-		// 	xAxis.setHovered(mouseX)
-		// 	didUpdate = true
-		// }
-		// else{
-		// 	xAxis.setHovered(null)
-		// 	didUpdate = true
-		// }
+		if(mouseX > 0 && mouseX < canvasBounds.width && mouseY > 0 && mouseY < canvasBounds.height - previewHeight){
+			xAxis.setHovered(mouseX)
+		}
+		else{
+			xAxis.setHovered(null)
+			didUpdate = true
+		}
 
 		if(mouseEvent === 'DRAG'){
 			xAxis.onDrag(xAxis.currentLeftPositionPx - mouseX + newMouseX)
@@ -150,8 +159,6 @@ function TelegramGerraCharts(initialData, type){
 		percentage = initialData.percentage
 		y_scaled = initialData.y_scaled
 
-		var allItems = []
-
 		var data = {
 			yColumns: [],
 			axisX: []
@@ -177,8 +184,7 @@ function TelegramGerraCharts(initialData, type){
 				data.axisX = colls
 			}
 			else{
-				allItems = allItems.concat(colls)
-				data.yColumns.push({ name: name, type: type, columns: colls, color: color, stacked: stacked })
+				data.yColumns.push({ visible: true, name: name, type: type, columns: colls, color: color })
 			}
 		}
 
@@ -188,7 +194,7 @@ function TelegramGerraCharts(initialData, type){
 
 		yAxis = new AxisY()
 
-		yAxis.setInitialData(data.yColumns, xAxis, allItems)
+		yAxis.setInitialData(data.yColumns)
 	}
 
 	function renderPrewie(){
@@ -280,6 +286,10 @@ function TelegramGerraCharts(initialData, type){
 		else if(type === 'bar' && stacked === true){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 
+				if(!yAxis.columns[clmn].visible){
+					continue
+				}
+
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
@@ -288,6 +298,11 @@ function TelegramGerraCharts(initialData, type){
 		}
 		else if(type === 'bar'){
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
+
+				if(!yAxis.columns[clmn].visible){
+					continue
+				}
+
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
@@ -295,12 +310,16 @@ function TelegramGerraCharts(initialData, type){
 		    }
 		}
 		else{
-
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
+
+				if(!yAxis.columns[clmn].visible){
+					continue
+				}
+
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
-				drawLineChart(labels, color, clmn, 0, xAxis.labels.length, xAxis.scaleRatio, xAxis.offset, yAxis.mapScale, yAxis.mapOffset, 1, true)
+				drawLineChart(labels, color, clmn, 0, xAxis.labels.length, xAxis.scaleRatio, xAxis.offset, yAxis.mapScale, yAxis.mapOffset, MAP_LW, true)
 			}
 		}
 	}
@@ -309,6 +328,10 @@ function TelegramGerraCharts(initialData, type){
 
 		if(type === 'area'){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
+
+				if(!yAxis.columns[clmn].visible){
+					continue
+				}
 
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
@@ -319,26 +342,40 @@ function TelegramGerraCharts(initialData, type){
 		else if(type === 'bar' && stacked === true){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 
+				if(!yAxis.columns[clmn].visible){
+					continue
+				}
+
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
-				drawBarStackedChart(labels, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset)
+				drawBarStackedChart(labels, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset, true)
 			}
 		}
 		else if(type === 'bar'){
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
+
+				if(!yAxis.columns[clmn].visible){
+					continue
+				}
+
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
-				drawBarChart(labels, color, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset)
+				drawBarChart(labels, color, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset, true)
 		    }
 		}
 		else{
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
+
+				if(yAxis.columns[clmn].visible === false){
+					continue
+				}
+
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
-				drawLineChart(labels, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, yAxis.scale, yAxis.offset, 2, false)
+				drawLineChart(labels, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, yAxis.scale, yAxis.offset, CHART_LW, false)
 			}
 		}
 	}
@@ -349,6 +386,8 @@ function TelegramGerraCharts(initialData, type){
 
 		canvasBounds = c
 
+		ctx.font = FONT
+
 		if(WIDTH !== c.width * dpx || HEIGHT !== c.height * dpx){
 
 			WIDTH = c.width * dpx
@@ -358,7 +397,9 @@ function TelegramGerraCharts(initialData, type){
 
 			canvas.setAttribute('width', WIDTH)
 			canvas.setAttribute('height', HEIGHT)
-			
+				
+			ctx.font = FONT
+
 			xAxis.resize()
 
 			didUpdate = true
@@ -371,14 +412,11 @@ function TelegramGerraCharts(initialData, type){
 
 			didUpdate = false
 
-			xAxis.render(ctx)
 			renderMapPathes()
 			renderPrewie()
 			renderMain()
-
-			yAxis.render(time)
-			
-
+			xAxis.render()
+			yAxis.render()
 			
 		}
 
@@ -424,10 +462,14 @@ function TelegramGerraCharts(initialData, type){
 		ctx.stroke()
 	}
 
-	function drawBarChart(labels, color, start, end, xScaleRatio, xOffset, bottom, yScaleRatio, yOffset){
+	function drawBarChart(labels, color, start, end, xScaleRatio, xOffset, bottom, yScaleRatio, yOffset, isMain){
 
 		ctx.globalAlpha = 1
 		ctx.beginPath()
+
+		if(isMain && xAxis.hovered){
+			ctx.globalAlpha = 0.4
+		}
 
 		for(var i = start; i < end; i++){
 
@@ -458,12 +500,15 @@ function TelegramGerraCharts(initialData, type){
 	}
 
 
-	function drawBarStackedChart(labels, color, index, start, end, xScaleRatio, xOffset, bottom, yScaleRatio, yOffset){
+	function drawBarStackedChart(labels, color, index, start, end, xScaleRatio, xOffset, bottom, yScaleRatio, yOffset, isMain){
 		ctx.globalAlpha = 1
 		ctx.fillStyle = color
 
 		ctx.beginPath()
 
+		if(isMain && xAxis.hovered){
+			ctx.globalAlpha = 0.4
+		}
 		for(var i = start; i < end; i++){
 
 			var x = xAxis.labels[i]
@@ -505,11 +550,12 @@ function TelegramGerraCharts(initialData, type){
 		for(var i = start; i < end; i++){
 
 			var x = xAxis.labels[i]
-			var y = 0;
+			var y = 0
 
 			for(var z = index; 0 <= z; z--){
-				y += yAxis._stacked[i][z]
-			}
+				y += yAxis._stacked[i][z].value
+			}	
+
 
 			var _v = timeStampToPX(y, yScaleRatio, yOffset)
 			var _x = timeStampToPX(x, xScaleRatio, xOffset)
@@ -533,6 +579,8 @@ function TelegramGerraCharts(initialData, type){
 	function AxisY(){
 
 		this.columns = []
+		this.hiddenColumns = []
+
 		this._stacked = []
 		this.ownScales = []
 
@@ -540,7 +588,6 @@ function TelegramGerraCharts(initialData, type){
 		this.top = 1
 		this.itemsDiff = 1
 
-		this.yTextDelta = 1
 		this.scale = 1
 		this.offset = 1
 		this.totalMaxLimit = 0
@@ -548,86 +595,180 @@ function TelegramGerraCharts(initialData, type){
 
 		this.mapScale = 1
 		this.mapOffset = 1
+		this.mapDiff = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 300
+		}
 
-		this.prevS = 0
+		this.holdedDiff = 1
+		this.textOpacity = 1
+		this.prevTextOpacity = 0
 
-		this.setInitialData = function(columns, xAxis, allItems){
+		this.holdedNextDiff = 1
+
+		this.toggleColumn = function(e){
+			var index = e.target.getAttribute('data-index');
+
+			var current = this.columns[index]
+
+			current.visible = !current.visible
+
+			this.setTotalLimit()
+			this.updateLimits()
+
+
+			didUpdate = true
+		}
+
+		this.setInitialData = function(columns){
 
 			this.columns = columns
 
-			this.totalMaxLimit = Math.max.apply(null, allItems)
-			this.totalMinLimit = Math.min.apply(null, allItems)
+			if(columns.length > 1){
+				for(var i = 0; i < columns.length; i++){
+					var current = columns[i]
 
-			if(stacked){
-				if(percentage){
-					this.createLabelsWithPercentage()
-				}
-				else{
-					this.createStackedLabels()
+					var inputWrap = document.createElement('div')
+					inputWrap.classList.add('input-wrapp')
+					
+
+					labelsContainer.appendChild(inputWrap)
+
+					var mask = document.createElement('div')
+					mask.classList.add('input-mask')
+					mask.style.backgroundColor = current.color
+
+					var text = document.createElement('span')
+
+					var tick = document.createElement('i')
+
+					text.innerHTML = current.name
+
+					mask.appendChild(tick)
+					mask.appendChild(text)
+
+				 	var input = document.createElement('input')
+				 	input.type = "checkbox"
+				 	input.setAttribute('data-index', i);
+				 	input.checked = true
+					input.addEventListener('click', this.toggleColumn.bind(this))
+
+				 	inputWrap.appendChild(input)
+				 	inputWrap.appendChild(mask)
+
 				}
 			}
 
-			this.updateLimits(xAxis)
+			this.setTotalLimit()
+			this.updateLimits()
 		}
 
-
-		this.createLabelsWithPercentage = function(){
-
+		this.setTotalLimit = function(){
+			
 			var columns = this.columns
 
-			this.totalMaxLimit = 100
-			this.totalMinLimit = 0
+			if(percentage){
+				this.totalMaxLimit = 100
+				this.totalMinLimit = 0
 
-			for(var i = 0; i < 365; i++){
+				for(var i = 0; i < 365; i++){
 
-				var qr = 0
+					var qr = 0
 
-				var temp = []
-				var _temp = []
+					var temp = []
+					var _temp = []
 
-				for(var c = 0; c < columns.length; c++){
-					temp.push(columns[c].columns[i])
-					qr += columns[c].columns[i]
+					for(var c = 0; c < columns.length; c++){
+
+						var curColl = columns[c]
+
+						if(curColl.visible){
+							qr += curColl.columns[i]
+							temp.push(curColl.columns[i])
+						}
+						else{
+							qr += 0
+							temp.push(0)
+						}
+					}
+
+					for(var v = 0; v < temp.length; v ++){
+
+						var t = temp[v] / qr * 100
+
+						if(this._stacked[i]){
+							var prevValue = this._stacked[i][v].value
+
+							if(prevValue !== t){
+								_temp[v] = { value: prevValue, toValue: t, fromValue: prevValue, duration: 300, needAnimate: true }
+							}
+							else{
+								_temp[v] = { value: t }
+							}
+						}
+						else{
+							_temp[v] = { value: t }
+						}
+
+
+					}
+
+					this._stacked[i] = _temp
 				}
-
-				for(var v = 0; v < temp.length; v ++){
-					var t = temp[v] / qr * 100
-
-					_temp.push(t) 
-				}
-
-				this._stacked.push(_temp)
 			}
+			else if(stacked){
+
+				this.totalMaxLimit = 0
+
+				for(var i = 0; i < 365; i++){
+
+					var temp = []
+
+					var top = 0 
+
+					for(var c = 0; c < columns.length; c++){
+
+						var curColl = columns[c]
+
+						if(curColl.visible){
+							top += curColl.columns[i]
+							temp.push(curColl.columns[i])
+						}
+						else{
+							top += 0
+							temp.push(0)
+						}
+					}
+
+					if(top > this.totalMaxLimit){
+						this.totalMaxLimit = top
+					}
+
+					this._stacked[i] = temp
+				}
+			}
+			else{
+				var visibleItems = []
+
+				for(var i = 0; i < columns.length; i++){
+					var column = columns[i]
+
+					if(column.visible === false){
+						continue
+					}
+
+					visibleItems = visibleItems.concat(column.columns)
+				}
+
+				this.totalMaxLimit = Math.max.apply(null, visibleItems)
+				this.totalMinLimit = Math.min.apply(null, visibleItems)
+			}
+
 		}
 
-
-		this.createStackedLabels = function(){
-
-			var columns = this.columns
-
-			this.totalMaxLimit = 0
-
-			for(var i = 0; i < 365; i++){
-
-				var temp = []
-
-				var top = 0 
-				for(var c = 0; c < columns.length; c++){
-					top += columns[c].columns[i]
-					temp.push(columns[c].columns[i])
-				}
-
-				if(top > this.totalMaxLimit){
-					this.totalMaxLimit = top
-				}
-
-				this._stacked.push(temp)
-			}
-		}
-
-		this.updateLimits = function(xAxis){
-
-			this.columns = this.columns || []
+		this.updateLimits = function(){
 
 			this.low = 0
 			this.top = -Infinity
@@ -636,11 +777,13 @@ function TelegramGerraCharts(initialData, type){
 				this.low = Infinity
 			}
 
-			if(stacked){
+			if(percentage){
+				this.top = 100
+			}
+			else if(stacked){
 				for (var c = xAxis.currentDiffLeftPositionIndex; c < xAxis.currentDiffRightPositionIndex; c++) {
-
 					var currentMax = 0
-				
+
 					for(var z = 0; z < this._stacked[c].length; z++){
 						currentMax += this._stacked[c][z]
 					}
@@ -648,55 +791,69 @@ function TelegramGerraCharts(initialData, type){
 					if (currentMax > this.top){
 						this.top = currentMax
 					}
+				}
+			}
+			else if(y_scaled){
+				for(var c = 0; c < this.columns.length; c++){
 
-					if(percentage){
-						if(this.top > 100){
-							this.top = 100
-						}
+					var column = this.columns[c].columns;
+
+					var ownOffset = {
+						low: Infinity,
+						top: -Infinity,
+						scale: 0,
+						offset: 0,
+						previewScale: Infinity,
+						previewOffset: -Infinity,
+						itemsDiff: 1,
+						prevTextOpacity: 0,
+						textOpacity: 1,
+						holdedDiff: 1,
+						holdedNextDiff: 1,
+						visible: this.columns[c].visible
 					}
+
+					if(this.ownScales[c]){
+						ownOffset = this.ownScales[c]
+						ownOffset.low = Infinity
+						ownOffset.top = -Infinity
+						ownOffset.visible = this.columns[c].visible
+					}
+
+					for (var i = xAxis.currentDiffLeftPositionIndex; i < xAxis.currentDiffRightPositionIndex; i++) {
+						var y = column[i];
+
+						if(y < ownOffset.low){
+							ownOffset.low = y
+						}
+
+						if(y > ownOffset.top){
+							ownOffset.top = y
+						} 
+					}
+
+					var itemsDiff = ownOffset.top - ownOffset.low
+
+					if(itemsDiff !== ownOffset.itemsDiff){
+						updateDiff(ownOffset, ownOffset.top, ownOffset.low, itemsDiff)
+					}
+
+					ownOffset.fontColor = this.columns[c].color
+
+					var previewDiff = Math.max.apply(null, column) - Math.min.apply(null, column)
+					ownOffset.previewScale = -previewHeight / previewDiff
+					ownOffset.previewOffset = HEIGHT - Math.min.apply(null, column) * ownOffset.previewScale
+
+
+					this.ownScales[c] = ownOffset
 				}
 			}
 			else{
-				if(y_scaled){
-
-					for(var c = 0; c < this.columns.length; c++){
-						var column = this.columns[c].columns;
-
-						var ownOffset = {
-							low: Infinity,
-							top: -Infinity,
-							scale: 0,
-							offset: 0,
-							previewScale: Infinity,
-							previewOffset: -Infinity
-						}
-
-						for (var i = xAxis.currentDiffLeftPositionIndex; i < xAxis.currentDiffRightPositionIndex; i++) {
-
-							var y = column[i];
-
-							if (y < ownOffset.low) ownOffset.low = y
-							if (y > ownOffset.top) ownOffset.top = y
-						}
-
-						var itemsDiff = ownOffset.top - ownOffset.low
-						var previewDiff = Math.max.apply(null, column) - Math.min.apply(null, column)
-
-						ownOffset.fontColor = this.columns[c].color
-
-						ownOffset.previewScale = -previewHeight / previewDiff
-						ownOffset.previewOffset = HEIGHT - Math.min.apply(null, column) * ownOffset.previewScale
-
-						ownOffset.scale = -(chartHeight - PREVIEW_PT) / itemsDiff
-						ownOffset.offset = chartHeight - ownOffset.low * ownOffset.scale
-
-						ownOffset.labelsDelta = Math.floor(itemsDiff / Math.ceil(yLablesOffset))
-
-						this.ownScales[c] = ownOffset
-					}
-				}
 
 				for (var c = 0; c < this.columns.length; c++) {
+					if(!this.columns[c].visible){
+						continue
+					}
 
 					var column = this.columns[c].columns;
 
@@ -711,138 +868,368 @@ function TelegramGerraCharts(initialData, type){
 
 			var itemsDiff = this.top - this.low
 
-			if(itemsDiff !== this.itemsDiff){
-				var animation = new Animation(this.itemsDiff, itemsDiff, 300, appTime || 0)
-
-				if(this.textAnimation){
-					// this.textAnimation.update(itemsDiff)
-				}
-				else{
-
-					this.prevS = this.itemsDiff
-					if(itemsDiff > this.itemsDiff){
-						this.textAnimation = new Animation(0, -60, 400, appTime || 0)
-					}else{
-						this.textAnimation = new Animation(0, 60, 400, appTime || 0)
-					}
-				}
-
-
-				this.animation = animation
+			if(!this.itemsDiff){
+				this.itemsDiff = itemsDiff
 			}
 
-			var previewDiff = this.totalMaxLimit - this.totalMinLimit
+			if(itemsDiff < 0){
+				itemsDiff = 1
+			}
 
-			this.mapScale = -previewHeight / previewDiff
-			this.mapOffset = HEIGHT - this.totalMinLimit * this.mapScale
+			if(itemsDiff !== this.itemsDiff){
+				updateDiff(this, this.top, this.low, itemsDiff)
+			}
 
+			var mapDiff = this.totalMaxLimit - this.totalMinLimit
 
+			if(mapDiff !== this.mapDiff.value){
+				this.mapDiff = { value: this.mapDiff.value, fromValue: this.mapDiff.value, toValue: mapDiff, needAnimate: true, duration: 300 }
+			}
+			
 		}
 
+		function updateDiff(obj, top, low, diff){
+			var animation = new Animation(obj.itemsDiff, diff, 300, appTime)
+
+			obj.textFadeOut = new Animation(1, 0, 400, appTime)
+			obj.textFadeIn = new Animation(0, 1, 400, appTime)
+
+			if(!obj.textAnimation){
+
+				obj.holdedNextDiff = diff
+				obj.holdedLow = obj.low
+				obj.holdedDiff = obj.itemsDiff
+
+				if(diff > obj.itemsDiff){
+					obj.textAnimation = new Animation(0, 60 * dpx, 300, appTime)
+				}else{
+					obj.textAnimation = new Animation(0, -60 * dpx, 300, appTime)
+				}
+			}
+
+			obj.animation = animation
+		}
 
 		this.render = function(){
 			ctx.fillStyle = "#8E8E93"
 
+			for(var i = 0; i < this._stacked.length; i++){
+				var current = this._stacked[i]
 
+				for(var c = 0; c < current.length; c++){
+					var item = current[c]
+
+					if(item.needAnimate){
+						if(!item.animationStart){
+							item.animationStart = appTime
+						}
+						var q = this.animate(item)
+						if(q === false){
+							this._stacked[i][c].needAnimate = false
+						}else{
+							this._stacked[i][c].value = q
+						}
+
+						didUpdate = true
+					}	
+				}
+			}
+
+			if(this.mapDiff.needAnimate){
+				if(!this.mapDiff.animationStart){
+					this.mapDiff.animationStart = appTime
+				}
+				var q = this.animate(this.mapDiff)
+				if(q === false){
+					this.mapDiff.needAnimate = false
+				}else{
+					this.mapDiff.value = q
+				}
+
+				didUpdate = true
+			}
+
+			if(this.textAnimation){
+				var d = this.textAnimation.animate(appTime)
+
+				if(d === false){
+					this.textAnimation = null
+				}
+
+				didUpdate = true
+			}
+
+			if(this.textFadeOut){
+				var d = this.textFadeOut.animate(appTime)
+
+				if(d === false){
+					this.textFadeOut = null
+				}
+				else{
+					this.prevTextOpacity = d
+				}
+
+				didUpdate = true
+			}
+
+			if(this.textFadeIn){
+				var d = this.textFadeIn.animate(appTime)
+
+				if(d === false){
+					this.textFadeIn = null
+				}
+				else{
+					this.textOpacity = d
+				}
+				didUpdate = true
+			}
 
 			if(this.animation){
 
-				var d = this.animation.animate(appTime || 0)
+				var d = this.animation.animate(appTime)
 
 				if(d === false){
 					this.animation = null
-				}else
-				{
+				}else{
 					this.itemsDiff = d
 				}
 				
 				didUpdate = true
 			}
 
-			if(this.textAnimation){
-				if(this.textAnimation){
-					var d = this.textAnimation.animate(appTime || 0)
-				}
 
-				if(d === false){
-					this.textAnimation = null
-				}
-				
-				didUpdate = true
-			}
+			if(y_scaled){
+				if(this.ownScales){
+					for(var i = 0; i < this.ownScales.length; i++){
+						var current = this.ownScales[i]
 
-			if(this.textAnimation){
-				this.yTextDelta =  Math.floor(this.prevS / Math.ceil(yLablesOffset));
+						if(current.textAnimation){
+							var d = current.textAnimation.animate(appTime)
+
+							if(d === false){
+								current.textAnimation = null
+							}
+
+							didUpdate = true
+						}
+
+						if(current.textFadeOut){
+							var d = current.textFadeOut.animate(appTime)
+
+							if(d === false){
+								current.textFadeOut = null
+							}
+							else{
+								current.prevTextOpacity = d
+							}
+
+							didUpdate = true
+						}
+
+						if(current.textFadeIn){
+							var d = current.textFadeIn.animate(appTime)
+
+							if(d === false){
+								current.textFadeIn = null
+							}
+							else{
+								current.textOpacity = d
+							}
+							didUpdate = true
+						}
+
+						if(current.animation){
+
+							var d = current.animation.animate(appTime)
+
+							if(d === false){
+								current.animation = null
+							}else{
+								current.itemsDiff = d
+							}
+
+							didUpdate = true
+						}
+
+						current.scale = -(chartHeight - PREVIEW_PT) / current.itemsDiff;
+						current.offset = chartHeight - current.low * current.scale;
+
+					}
+				}
 			}
-			else{
-				this.yTextDelta =  Math.floor(this.itemsDiff / Math.ceil(yLablesOffset));
-			}
+			
+			this.mapScale = -previewHeight / this.mapDiff.value
+			this.mapOffset = HEIGHT - this.totalMinLimit * this.mapScale
+
 
 			this.scale = -(chartHeight - PREVIEW_PT) / this.itemsDiff;
 			this.offset = chartHeight - this.low * this.scale;
 
-			for (var i = 0; i < yLablesOffset + 2; i++) {
+			var textDelta = Math.floor(this.holdedDiff / Math.ceil(yLablesOffset));
+			var textScale = -(chartHeight - PREVIEW_PT) / this.holdedDiff;
+			var textOffset = chartHeight - this.holdedLow * textScale;
 
-				if(y_scaled){
+			var nextTextDelta =  Math.floor(this.holdedNextDiff / Math.ceil(yLablesOffset));
+			var nextTextScale = -(chartHeight - PREVIEW_PT) / this.holdedNextDiff; 
+			var nextTextOffset = chartHeight - this.low * nextTextScale;
 
-					var left = this.ownScales[0]
-					var right = this.ownScales[1]
+			if(y_scaled){
 
-					if(left){
-						var value = left.low + left.labelsDelta * i
-						var y = timeStampToPX(value, left.scale, left.offset)
+				var left = this.ownScales[0]
+				var right = this.ownScales[1]
+
+				if(left && left.visible){
+
+					var textDelta = Math.floor(left.holdedDiff / Math.ceil(yLablesOffset));
+					var textScale = -(chartHeight - PREVIEW_PT) / left.holdedDiff;
+					var textOffset = chartHeight - left.holdedLow * textScale;
+
+					var nextTextDelta =  Math.floor(left.holdedNextDiff / Math.ceil(yLablesOffset));
+					var nextTextScale = -(chartHeight - PREVIEW_PT) / left.holdedNextDiff; 
+					var nextTextOffset = chartHeight - left.low * nextTextScale;
+
+
+					for (var i = 0; i < yLablesOffset + 1; i++) {
+
+						var val = left.low + nextTextDelta * i
+						var newY = timeStampToPX(val, nextTextScale, nextTextOffset);
+
+						if(val === 0){
+							ctx.fillText(formatNumber(val, true), 0, 0 - Y_LABELS_BP);
+							continue
+						}
+
+						ctx.globalAlpha = left.textOpacity / 10
+						drawLine(i, newY)
+
 						ctx.fillStyle = left.fontColor
+						ctx.globalAlpha = left.textOpacity
+						ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
 
+						if(left.prevTextOpacity === 0){
+							continue
+						}
+
+						var value = left.holdedLow + textDelta * i
+						var y = timeStampToPX(value, textScale, textOffset);
+
+						if(left.textAnimation){
+							y += left.textAnimation.value
+							if(y > chartHeight){
+								continue
+							}
+						}
+
+
+						ctx.globalAlpha = left.prevTextOpacity / 10
+						drawLine(i, y)
+
+						ctx.globalAlpha = left.prevTextOpacity
 						ctx.fillText(formatNumber(value, true), 0, y - Y_LABELS_BP);
 					}
-					if(right){
-						var value = right.low + right.labelsDelta * i
-						var y = timeStampToPX(value, right.scale, right.offset)
+				}
+				if(right && right.visible){
+
+					for (var i = 0; i < yLablesOffset + 1; i++) {
+
+						var textDelta = Math.floor(right.holdedDiff / Math.ceil(yLablesOffset));
+						var textScale = -(chartHeight - PREVIEW_PT) / right.holdedDiff;
+						var textOffset = chartHeight - right.holdedLow * textScale;
+
+						var nextTextDelta =  Math.floor(right.holdedNextDiff / Math.ceil(yLablesOffset));
+						var nextTextScale = -(chartHeight - PREVIEW_PT) / right.holdedNextDiff; 
+						var nextTextOffset = chartHeight - right.low * nextTextScale;
+
+						var val = right.low + nextTextDelta * i
+						var newY = timeStampToPX(val, nextTextScale, nextTextOffset);
 
 						ctx.fillStyle = right.fontColor
 
+						ctx.globalAlpha = right.textOpacity
+						ctx.fillText(formatNumber(val, true), WIDTH - Y_LABELS_RP, newY - Y_LABELS_BP);
+
+						var value = right.holdedLow + textDelta * i
+						var y = timeStampToPX(value, textScale, textOffset);
+
+						if(right.textAnimation){
+							y += right.textAnimation.value
+							if(y > chartHeight){
+								continue
+							}
+						}
+
+						ctx.globalAlpha = right.prevTextOpacity
 						ctx.fillText(formatNumber(value, true), WIDTH - Y_LABELS_RP, y - Y_LABELS_BP);
+
 					}
 				}
-				else{
-					var value = this.low + this.yTextDelta * i;
-					var y = timeStampToPX(value, this.scale, this.offset);
+			}
 
-					if(this.textAnimation && value !== 0){
+			else{
+
+				for (var i = 0; i < yLablesOffset + 1; i++) {
+
+					var val = this.low + nextTextDelta * i
+					var newY = timeStampToPX(val, nextTextScale, nextTextOffset);
+
+					if(val === 0){
+						ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
+						continue
+					}
+
+					ctx.globalAlpha = this.textOpacity / 10
+					drawLine(i, newY)
+
+					ctx.globalAlpha = this.textOpacity
+					ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
+
+					if(this.prevTextOpacity === 0){
+						continue
+					}
+
+					var value = this.holdedLow + textDelta * i
+					var y = timeStampToPX(value, textScale, textOffset);
+
+
+					if(this.textAnimation){
 						y += this.textAnimation.value
-
 						if(y > chartHeight){
 							continue
 						}
 					}
 
-					ctx.fillText(formatNumber(value, true), 0, y - Y_LABELS_BP);
+					ctx.globalAlpha = this.prevTextOpacity / 10
+					drawLine(i, y)
 
+					ctx.globalAlpha = this.prevTextOpacity
+					ctx.fillText(formatNumber(value, true), 0, y - Y_LABELS_BP);
 				}
 			}
+		}
 
+		this.animate = function(item){
+
+			if(item.toValue === item.value){
+				return false
+			}
+
+	        var progress = (appTime - item.animationStart) / item.duration;
+	        if (progress < 0) progress = 0;
+	        if (progress > 1) progress = 1;
+
+	        var ease = -progress * (progress - 2);
+
+	        return item.fromValue + (item.toValue - item.fromValue) * ease;
+		}
+
+		function drawLine(index, y){
 			ctx.lineWidth = 1
 			ctx.strokeStyle = '#182D3B'
-			ctx.globalAlpha = 0.1
 
-			for (var i = 0; i < yLablesOffset + 2; i++) {
-				var value = this.low + this.yTextDelta * i;
-
-				var y = timeStampToPX(value, this.scale, this.offset);
-
-				if(this.textAnimation && y !== 0){
-					y += this.textAnimation.value
-
-					if(y > chartHeight){
-						continue
-					}
-				}
-
-				ctx.beginPath();
-				ctx.moveTo(0, y);
-				ctx.lineTo(WIDTH, y);
-				ctx.stroke();
-			}
+			ctx.beginPath();
+			ctx.moveTo(0, y);
+			ctx.lineTo(WIDTH, y);
+			ctx.stroke();
 		}
 
 		function formatNumber(n, short) {
@@ -871,7 +1258,14 @@ function TelegramGerraCharts(initialData, type){
 		this.fontColor = "#8E8E93"
 		this.opacity = 0
 
-		this.textWidth = 30 * dpx
+		this.textWidth = 34 * dpx
+		this.textSidesOffset = 1
+
+		this.textStep = 1
+		this.prevTextStep = 1
+
+		this.textFadeOut = null
+		this.textFadeIn = null
 
 		this.leftAbsoluteTsLimit = 1
 		this.rightAbsoluteTsLimit = Infinity
@@ -894,8 +1288,8 @@ function TelegramGerraCharts(initialData, type){
 
 		this.setCurrentDiff = function(left, right){
 
-			left = pxToTs(left, this.scaleRatio, this.offset)
-			right = pxToTs(right, this.scaleRatio, this.offset)
+			left = Math.ceil(pxToTs(left, this.scaleRatio, this.offset))
+			right = Math.floor(pxToTs(right, this.scaleRatio, this.offset))
 
 			this.currentDiff = right - left
 
@@ -904,6 +1298,33 @@ function TelegramGerraCharts(initialData, type){
 			}
 			else{
 				this.currentDiffScale = WIDTH / (this.currentDiff + this.stepTsDiff)
+			}
+
+			var textStep = Math.round(this.currentDiff / this.stepTsDiff / this.textSidesOffset)
+
+			var step = 1
+
+			while (step <= textStep){
+				step *= 2
+			}
+
+			textStep = step
+
+			if(textStep !== this.textStep){
+
+				if(this.textStep !== 1){
+					if(textStep > this.textStep){
+						this.textFade = new Animation(1, 0, 300, appTime)
+					}
+					else{
+						this.textFade = new Animation(0, 1, 300, appTime)
+						
+					}
+				}
+
+				this.prevTextStep = this.textStep
+				this.textStep = textStep
+
 			}
 			
 			this.currentDiffOffset = -left * this.currentDiffScale
@@ -995,6 +1416,7 @@ function TelegramGerraCharts(initialData, type){
 
 			this.labels = labels
 			
+			this.textSidesOffset = WIDTH / (this.textWidth * 2)
 			this.leftAbsoluteTsLimit = labels[0]
 			this.rightAbsoluteTsLimit = labels[labels.length - 1]
 			this.tsAbsoluteDifference = labels[labels.length - 1] - labels[0]
@@ -1008,52 +1430,250 @@ function TelegramGerraCharts(initialData, type){
 		}
 
 		this.setHovered = function(currentInPx){
+
 			if(!currentInPx){
 				this.hovered = null
 				this.hoveredInPX = null
+
+				return
 			}
 
 			this.hoveredInPX = currentInPx
-			this.hovered = Math.floor(pxToTs(currentInPx, this.scaleRatio, this.offset))
+			this.hovered = Math.floor(pxToTs(currentInPx, this.currentDiffScale, this.currentDiffOffset))
+
+
+			didUpdate = true
 		}
 
-		this.render = function(ctx){
+		this.render = function(){
+
+
+			if(this.hovered && this.hovered !== null){
+
+				var columns = yAxis.columns
+
+				var xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit) / this.stepTsDiff)
+
+				if(percentage){
+
+					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) 
+
+					ctx.lineWidth = 1
+					ctx.strokeStyle = '#182D3B'
+					ctx.globalAlpha = 0.1
+					ctx.beginPath()
+					ctx.moveTo(this.hoveredInPX, 0)
+					ctx.lineTo(this.hoveredInPX, chartHeight)
+					ctx.stroke();
+
+					for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
+						var y = 0
+						var x = 0
+
+						var column = columns[clmn]
+
+						if(xIndex === -1){
+							for(var z = clmn; 0 <= z; z--){
+								y += yAxis._stacked[0][z].value
+							}
+
+							x = this.labels[0] * this.currentDiffScale + this.currentDiffOffset
+						}
+						else{
+							for(var z = clmn; 0 <= z; z--){
+								y += yAxis._stacked[xIndex][z].value
+							}
+
+							x = (this.labels[xIndex] * this.currentDiffScale + this.currentDiffOffset) + this.stepTsDiff * this.currentDiffScale
+						}
+
+						var color = column.color
+						var name = column.name
+					}
+				}
+				else if(type === 'bar' && stacked){
+
+					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) 
+
+					for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
+						var y = 0
+						var x = 0
+
+						var column = columns[clmn]
+
+						if(xIndex === -1){
+							for(var z = clmn; 0 <= z; z--){
+								y += yAxis._stacked[0][z]
+							}
+
+							x = this.labels[0] * this.currentDiffScale + this.currentDiffOffset
+						}
+						else{
+							for(var z = clmn; 0 <= z; z--){
+								y += yAxis._stacked[xIndex][z]
+							}
+
+							x = (this.labels[xIndex] * this.currentDiffScale + this.currentDiffOffset)
+						}
+
+						var color = column.color
+
+						var name = column.name
+
+						ctx.beginPath()
+
+						ctx.globalAlpha = 1
+						ctx.fillStyle = color
+
+						ctx.moveTo(x, chartHeight)
+						ctx.lineTo(x, y * yAxis.scale + yAxis.offset)
+						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, y * yAxis.scale + yAxis.offset)
+						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, chartHeight)
+
+						ctx.fill()
+					}
+				}
+				else if(type === 'bar'){
+
+					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) 
+
+					for(var c = 0; c < columns.length; c++){
+
+						var column = columns[c]
+
+						ctx.globalAlpha = 1
+						ctx.beginPath()
+
+						var y = column.columns[xIndex] * yAxis.scale + yAxis.offset
+						var x = this.labels[xIndex] * this.currentDiffScale + this.currentDiffOffset
+
+
+						ctx.moveTo(x, chartHeight)
+						ctx.lineTo(x, y)
+						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, y)
+						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, chartHeight)
+			
+						ctx.fillStyle = color
+						ctx.fill()
+
+					}
+				}
+				else if(y_scaled){
+					ctx.lineWidth = 1 * dpx
+					ctx.strokeStyle = '#182D3B'
+					ctx.globalAlpha = 0.1
+					ctx.beginPath()
+					ctx.moveTo(this.hoveredInPX, 0)
+					ctx.lineTo(this.hoveredInPX, chartHeight)
+					ctx.stroke();
+
+					for(var c = 0; c < columns.length; c++){
+
+						var column = columns[c]
+
+						if(column.visible === false){
+							continue
+						}
+
+						var yOffset = yAxis.ownScales[c].offset
+						var yScale = yAxis.ownScales[c].scale
+
+						var color = column.color
+						var name = column.name
+						var y = column.columns[xIndex];
+						var x = this.labels[xIndex]
+
+						ctx.globalAlpha = 1
+						ctx.strokeStyle = color
+						ctx.fillStyle = '#FFF';
+						ctx.lineWidth = 2;
+						ctx.beginPath();
+						ctx.arc(x * this.currentDiffScale + this.currentDiffOffset, y * yScale + yOffset, 4 * dpx, 0, Math.PI * 2);
+						ctx.stroke();
+						ctx.fill();
+
+					}
+				}
+				else{
+
+
+					ctx.lineWidth = 1
+					ctx.strokeStyle = '#182D3B'
+					ctx.globalAlpha = 0.1
+					ctx.beginPath()
+					ctx.moveTo(this.hoveredInPX, 0)
+					ctx.lineTo(this.hoveredInPX, chartHeight)
+					ctx.stroke();
+
+					for(var c = 0; c < columns.length; c++){
+						var column = columns[c]
+						if(column.visible === false){
+							continue
+						}
+						var color = column.color
+						var name = column.name
+						var y = column.columns[xIndex];
+						var x = this.labels[xIndex]
+
+						ctx.globalAlpha = 1
+						ctx.strokeStyle = color
+						ctx.fillStyle = '#FFF';
+						ctx.lineWidth = 2;
+						ctx.beginPath();
+						ctx.arc(x * this.currentDiffScale + this.currentDiffOffset, y * yAxis.scale + yAxis.offset, 4 * dpx, 0, Math.PI * 2);
+						ctx.stroke();
+						ctx.fill();
+
+					}
+				}
+			}
+
 
 			ctx.fillStyle = "#8E8E93"
 			ctx.globalAlpha = 1
 
-			var count = Math.max(1, Math.floor(WIDTH / (this.textWidth * 2)));
-			var delta = this.currentDiff / this.stepTsDiff / count;
+			if(this.textFade){
+				var d = this.textFade.animate(appTime)
 
-			var step = 1;
+				if(d === false){
+					this.textFade = null
+				}
 
-			while (step <= delta){
-				step *= 2
+				didUpdate = true
 			}
 
-			for (var i = this.labels.length - 1; i >= 0; i -= step) {
+			if(this.textFade){
+				for (var i = this.labels.length; i >= 0; i -= this.prevTextStep) {
+
+					if(this.prevTextStep < this.textStep){
+						ctx.globalAlpha = this.textFade.value
+					}
+					else{
+						ctx.globalAlpha = 1
+					}
+
+					var item = this.labels[i]
+
+					var leftOffset = timeStampToPX(item, this.currentDiffScale, this.currentDiffOffset)
+
+					ctx.fillText(formatDate(this.labels[i], true), leftOffset, chartHeight + X_TEXT_PT);
+				}
+			}
+
+			for (var i = this.labels.length; i >= 0; i -= this.textStep) {
+
+				if(this.prevTextStep > this.textStep && this.textFade){
+					ctx.globalAlpha = this.textFade.value
+				}
+				else{
+					ctx.globalAlpha = 1
+				}
 
 				var item = this.labels[i]
 
 				var leftOffset = timeStampToPX(item, this.currentDiffScale, this.currentDiffOffset)
 
-				if(i === this.labels.length - 1){
-					ctx.fillText(formatDate(this.labels[i], true), leftOffset - 32, chartHeight + X_TEXT_PT);
-				}
-				else{
-					ctx.fillText(formatDate(this.labels[i], true), leftOffset, chartHeight + X_TEXT_PT);
-				}
-
-			}
-
-			if(this.hovered){
-				// ctx.lineWidth = 1
-				// ctx.strokeStyle = '#182D3B'
-				// ctx.globalAlpha = 0.2
-				// ctx.beginPath();
-				// ctx.moveTo(this.hoveredInPX, 0);
-				// ctx.lineTo(this.hoveredInPX, this.height);
-				// ctx.stroke();
+				ctx.fillText(formatDate(this.labels[i], true), leftOffset, chartHeight + X_TEXT_PT);
 			}
 		}
 
