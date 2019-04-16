@@ -5,10 +5,25 @@ body{
 	box-sizing: border-box;
 	margin: 0;
 	padding: 8px;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	-o-user-select: none;
+	user-select: none;
+	display: -webkit-flex;
+	display: -moz-flex;
+	display: -ms-flex;
+	display: -o-flex;
+	display: flex;
+	-webkit-flex-wrap: wrap;
+	-moz-flex-wrap: wrap;
+	-ms-flex-wrap: wrap;
+	-o-flex-wrap: wrap;
+	flex-wrap: wrap;
 }
 
 .wrapper{
-	width: 50%;
+	width: 33%;
 	padding: 8px 8px;
 	display: inline-block;
 	-webkit-box-sizing: border-box;
@@ -18,7 +33,101 @@ body{
 
 canvas{
 	width: 100%;
-	height: 350px;
+	height: 340px;
+}
+
+.labelsContainer{
+	width: 100%;
+	padding: 4px 0;
+	box-sizing: border-box;
+	display: -webkit-flex;
+	display: -moz-flex;
+	display: -ms-flex;
+	display: -o-flex;
+	display: flex;
+	-webkit-flex-wrap: wrap;
+	-moz-flex-wrap: wrap;
+	-ms-flex-wrap: wrap;
+	-o-flex-wrap: wrap;
+	flex-wrap: wrap;
+}
+
+.input-wrapp{
+	position: relative;
+	width: 100px;
+	height: 32px;
+	border-radius: 20px;
+	margin: 8px 8px;
+	cursor: pointer;
+}
+
+.input-wrapp input{
+	position: absolute;
+	width: 100%;
+	top: 0;
+	left: 0;
+	opacity: 0;
+	padding: 0;
+	margin: 0;
+	height: 100%;
+	border-radius: 20px;
+	cursor: pointer;
+}
+
+.input-wrapp .input-mask{
+	height: 100%;
+	position: relative;
+	pointer-events: none;
+	display: -webkit-flex;
+	display: -moz-flex;
+	display: -ms-flex;
+	display: -o-flex;
+	display: flex;
+	-ms-align-items: center;
+	align-items: center;
+	border-radius: 20px;
+	opacity: 0.6;
+	padding-left: 12px;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+	-webkit-transition: 0.3s opacity;
+	-o-transition: 0.3s opacity;
+	transition: 0.3s opacity;
+}
+
+.input-mask i{
+	background-image: url('./tick.svg');
+	width: 12px;
+	height: 12px;
+	-webkit-background-size: cover;
+	background-size: cover;
+	background-position: center center;
+}
+
+.input-mask span{
+	color: #fff;
+	padding-left: 8px;
+	font-family: 'Arial';
+	font-size: 14px;
+	border-radius: 20px;
+}
+
+.input-wrapp input:checked ~ .input-mask{
+	opacity: 1;
+}
+
+.modal{
+	background-color: #fff;
+	position: absolute;
+	width: 50px;
+	height: 50px;
+}
+
+@media screen and (max-width: 1200px){
+	.wrapper{
+		width: 50%;
+	}
 }
 
 @media screen and (max-width: 768px){
