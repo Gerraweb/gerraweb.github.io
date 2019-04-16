@@ -63,7 +63,7 @@ function TelegramGerraCharts(initialData, type){
 
 		var newMouseX = (e.clientX - canvasBounds.left) * dpx
 
-		if(mouseX > 0 && mouseX < canvasBounds.width && mouseY > 0 && mouseY < canvasBounds.height - previewHeight){
+		if(mouseX > 0 && mouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < HEIGHT * dpx - previewHeight){
 			xAxis.setHovered(mouseX)
 		}
 		else{
@@ -286,10 +286,6 @@ function TelegramGerraCharts(initialData, type){
 		else if(type === 'bar' && stacked === true){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 
-				if(!yAxis.columns[clmn].visible){
-					continue
-				}
-
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
@@ -329,9 +325,6 @@ function TelegramGerraCharts(initialData, type){
 		if(type === 'area'){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 
-				if(!yAxis.columns[clmn].visible){
-					continue
-				}
 
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
@@ -341,10 +334,6 @@ function TelegramGerraCharts(initialData, type){
 		}
 		else if(type === 'bar' && stacked === true){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
-
-				if(!yAxis.columns[clmn].visible){
-					continue
-				}
 
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
