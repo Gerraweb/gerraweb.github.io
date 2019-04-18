@@ -28,7 +28,7 @@ function TelegramGerraCharts(initialData, type){
 	var PREVIEW_BW = 1 * dpx
 	var PREVIEW_CW = 12 * dpx
 	var X_TEXT_PT = 15 * dpx
-	var Y_LABELS_OFFSET = 80 * dpx
+	var Y_LABELS_OFFSET = 48 * dpx
 	var Y_LABELS_BP = 6 * dpx
 	var Y_LABELS_RP = 30 * dpx
 	var CHART_LW = 2 * dpx
@@ -67,8 +67,9 @@ function TelegramGerraCharts(initialData, type){
 			xAxis.setHovered(mouseX)
 		}
 		else{
-			xAxis.setHovered(null)
-			didUpdate = true
+			if(xAxis.hovered){
+				xAxis.setHovered(null)
+			}
 		}
 
 		if(mouseEvent === 'DRAG'){
@@ -295,10 +296,6 @@ function TelegramGerraCharts(initialData, type){
 		else if(type === 'bar'){
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
 
-				if(!yAxis.columns[clmn].visible){
-					continue
-				}
-
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
@@ -325,7 +322,6 @@ function TelegramGerraCharts(initialData, type){
 		if(type === 'area'){
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 
-
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
@@ -333,10 +329,13 @@ function TelegramGerraCharts(initialData, type){
 			}
 		}
 		else if(type === 'bar' && stacked === true){
+
 			for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
+
+
 
 				drawBarStackedChart(labels, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset, true)
 			}
@@ -377,6 +376,8 @@ function TelegramGerraCharts(initialData, type){
 
 		ctx.font = FONT
 
+		appTime = time
+
 		if(WIDTH !== c.width * dpx || HEIGHT !== c.height * dpx){
 
 			WIDTH = c.width * dpx
@@ -394,7 +395,11 @@ function TelegramGerraCharts(initialData, type){
 			didUpdate = true
 		}
 
-		appTime = time
+		if(!yAxis.didFirstRender){
+			yAxis.setTotalLimit()
+			yAxis.updateLimits()
+			yAxis.didFirstRender = true
+		}
 
 		if(didUpdate){	
 			ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -412,7 +417,7 @@ function TelegramGerraCharts(initialData, type){
 		requestAnimationFrame(render)
 	}
 
-	render()
+	requestAnimationFrame(render)
 
 
 	function drawLineChart(labels, color, index, start, end, xScaleRatio, xOffset, yScaleRatio, yOffset, lineWidth, isMap){
@@ -501,14 +506,14 @@ function TelegramGerraCharts(initialData, type){
 		for(var i = start; i < end; i++){
 
 			var x = xAxis.labels[i]
-			var y = 0;
-
-			for(var z = index; 0 <= z; z--){
-				y += yAxis._stacked[i][z]
-			}
+			var y = yAxis._stacked[index][i].value;
 
 			var _v = timeStampToPX(y, yScaleRatio, yOffset)
 			var _x = timeStampToPX(x, xScaleRatio, xOffset)
+
+			if(!isMain && _v < HEIGHT - previewHeight){
+				_v = HEIGHT - previewHeight
+			}
 
 			if(i === start){
 				ctx.moveTo(0, bottom)
@@ -545,7 +550,6 @@ function TelegramGerraCharts(initialData, type){
 				y += yAxis._stacked[i][z].value
 			}	
 
-
 			var _v = timeStampToPX(y, yScaleRatio, yOffset)
 			var _x = timeStampToPX(x, xScaleRatio, xOffset)
 
@@ -567,23 +571,37 @@ function TelegramGerraCharts(initialData, type){
 
 	function AxisY(){
 
+		this.didFirstRender = false
+
 		this.columns = []
 		this.hiddenColumns = []
 
 		this._stacked = []
 		this.ownScales = []
 
+		this.labelsAnimated = false
+
 		this.low = 0
 		this.top = 1
-		this.itemsDiff = 1
+		this.labelsDiff = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 0,
+			shouldUpdate: false
+		}
 
 		this.scale = 1
 		this.offset = 1
+
+
+
 		this.totalMaxLimit = 0
 		this.totalMinLimit = 0
-
 		this.mapScale = 1
 		this.mapOffset = 1
+
+
 		this.mapDiff = {
 			value: 0,
 			toValue: 0,
@@ -591,11 +609,11 @@ function TelegramGerraCharts(initialData, type){
 			duration: 300
 		}
 
-		this.holdedDiff = 1
 		this.textOpacity = 1
 		this.prevTextOpacity = 0
 
-		this.holdedNextDiff = 1
+		this.mapShouldUpdate = false
+		this.chartSholdUpdate = false
 
 		this.toggleColumn = function(e){
 			var index = e.target.getAttribute('data-index');
@@ -649,9 +667,31 @@ function TelegramGerraCharts(initialData, type){
 
 				}
 			}
+		}
 
-			this.setTotalLimit()
-			this.updateLimits()
+		this.calculatePercentage = function(labelIndex){
+
+			var columns = this.columns
+
+			var arr2 = []
+
+			var percent = 0
+
+			for(var c = 0; c < columns.length; c++){
+
+				var curColl = columns[c]
+
+				if(curColl.visible){
+					percent += curColl.columns[labelIndex]
+					arr2.push(curColl.columns[labelIndex])
+				}
+				else{
+					percent += 0
+					arr2.push(0)
+				}
+			}
+
+			return { labels: arr2, percent: percent }			
 		}
 
 		this.setTotalLimit = function(){
@@ -664,78 +704,72 @@ function TelegramGerraCharts(initialData, type){
 
 				for(var i = 0; i < 365; i++){
 
-					var qr = 0
+					var calculatatedLabels = this.calculatePercentage(i)
+					var percent = calculatatedLabels.percent
+					var labels = calculatatedLabels.labels
+					var result = []
 
-					var temp = []
-					var _temp = []
+					for(var v = 0; v < labels.length; v ++){
 
-					for(var c = 0; c < columns.length; c++){
-
-						var curColl = columns[c]
-
-						if(curColl.visible){
-							qr += curColl.columns[i]
-							temp.push(curColl.columns[i])
-						}
-						else{
-							qr += 0
-							temp.push(0)
-						}
-					}
-
-					for(var v = 0; v < temp.length; v ++){
-
-						var t = temp[v] / qr * 100
+						var t = labels[v] / percent * 100
 
 						if(this._stacked[i]){
 							var prevValue = this._stacked[i][v].value
 
 							if(prevValue !== t){
-								_temp[v] = { value: prevValue, toValue: t, fromValue: prevValue, duration: 300, needAnimate: true }
+								if(!this.labelsAnimated) this.labelsAnimated = true
+								result[v] = { value: prevValue, toValue: t, fromValue: prevValue, duration: 300, needAnimate: true }
 							}
 							else{
-								_temp[v] = { value: t }
+								result[v] = { value: t }
 							}
 						}
 						else{
-							_temp[v] = { value: t }
+							result[v] = { value: t }
 						}
-
-
 					}
 
-					this._stacked[i] = _temp
+					this._stacked[i] = result
 				}
 			}
 			else if(stacked){
 
 				this.totalMaxLimit = 0
 
-				for(var i = 0; i < 365; i++){
+				for(var i = 0; i < xAxis.labels.length; i++){
 
-					var temp = []
+					for(var c = columns.length - 1; c >= 0; c--){
 
-					var top = 0 
+						var newValue = 0
 
-					for(var c = 0; c < columns.length; c++){
+						for(var z = c; z >= 0; z--){
 
-						var curColl = columns[c]
+							var zCol = columns[z]
 
-						if(curColl.visible){
-							top += curColl.columns[i]
-							temp.push(curColl.columns[i])
+							if(!zCol.visible){
+								continue
+							}
+							else{
+								newValue += columns[z].columns[i]
+							}
+						}
+
+						if(!this._stacked[c]) this._stacked[c] = []
+						if(!this._stacked[c][i]) this._stacked[c][i] = { value: newValue }
+
+						var prevValue = this._stacked[c][i].value
+
+						if(newValue !== prevValue){
+							if(!this.labelsAnimated) this.labelsAnimated = true
+							this._stacked[c][i] = { value: prevValue, toValue: newValue, fromValue: prevValue, duration: 300, needAnimate: true }
 						}
 						else{
-							top += 0
-							temp.push(0)
+							this._stacked[c][i] = { value: newValue }
 						}
-					}
 
-					if(top > this.totalMaxLimit){
-						this.totalMaxLimit = top
-					}
+						if(newValue > this.totalMaxLimit) this.totalMaxLimit = newValue
 
-					this._stacked[i] = temp
+					}
 				}
 			}
 			else{
@@ -755,6 +789,41 @@ function TelegramGerraCharts(initialData, type){
 				this.totalMinLimit = Math.min.apply(null, visibleItems)
 			}
 
+
+			this.setMapDifference()
+		}
+
+		this.setLowAndTop = function(){
+			if(percentage){
+				this.top = 100
+			}
+			else if(stacked){
+
+			}
+		}
+
+		this.setMapDifference = function(){
+			var mapDiff = this.totalMaxLimit - this.totalMinLimit
+
+			if(mapDiff !== this.mapDiff.value){
+				this.mapDiff = { value: this.mapDiff.value, fromValue: this.mapDiff.value, toValue: mapDiff, needAnimate: true, duration: 300, animationStart: appTime }
+			}
+		}
+
+		this.setDifference = function(){
+			var labelsDiff = this.top - this.low
+
+			if(labelsDiff < 0){
+				labelsDiff = 0
+			}
+			
+			if(this.labelsDiff.value !== labelsDiff){
+				this.labelsDiff.toValue = labelsDiff
+				this.labelsDiff.fromValue = this.labelsDiff.value
+				this.labelsDiff.shouldUpdate = true
+				this.labelsDiff.animationStart = appTime
+				this.labelsDiff.duration = 300
+			}
 		}
 
 		this.updateLimits = function(){
@@ -770,17 +839,16 @@ function TelegramGerraCharts(initialData, type){
 				this.top = 100
 			}
 			else if(stacked){
+
+				var currentMax = 0
+
 				for (var c = xAxis.currentDiffLeftPositionIndex; c < xAxis.currentDiffRightPositionIndex; c++) {
-					var currentMax = 0
-
-					for(var z = 0; z < this._stacked[c].length; z++){
-						currentMax += this._stacked[c][z]
-					}
-
-					if (currentMax > this.top){
-						this.top = currentMax
-					}
+					for(var z = 0; z < this._stacked.length; z++){
+						if(this._stacked[z][c].value > currentMax) currentMax = this._stacked[z][c].value
+ 					}
 				}
+
+				this.top = currentMax
 			}
 			else if(y_scaled){
 				for(var c = 0; c < this.columns.length; c++){
@@ -795,15 +863,11 @@ function TelegramGerraCharts(initialData, type){
 						previewScale: Infinity,
 						previewOffset: -Infinity,
 						itemsDiff: 1,
-						prevTextOpacity: 0,
 						textOpacity: 1,
-						holdedDiff: 1,
-						holdedNextDiff: 1,
 						visible: this.columns[c].visible
 					}
 
 					if(this.ownScales[c]){
-						ownOffset = this.ownScales[c]
 						ownOffset.low = Infinity
 						ownOffset.top = -Infinity
 						ownOffset.visible = this.columns[c].visible
@@ -822,12 +886,11 @@ function TelegramGerraCharts(initialData, type){
 					}
 
 					var itemsDiff = ownOffset.top - ownOffset.low
-
-					if(itemsDiff !== ownOffset.itemsDiff){
-						updateDiff(ownOffset, ownOffset.top, ownOffset.low, itemsDiff)
-					}
-
 					ownOffset.fontColor = this.columns[c].color
+
+					ownOffset.itemsDiff = itemsDiff
+					ownOffset.scale = -chartHeight / itemsDiff;
+					ownOffset.offset = chartHeight - ownOffset.low * ownOffset.scale;
 
 					var previewDiff = Math.max.apply(null, column) - Math.min.apply(null, column)
 					ownOffset.previewScale = -previewHeight / previewDiff
@@ -855,73 +918,59 @@ function TelegramGerraCharts(initialData, type){
 				}
 			}
 
-			var itemsDiff = this.top - this.low
-
-			if(!this.itemsDiff){
-				this.itemsDiff = itemsDiff
-			}
-
-			if(itemsDiff < 0){
-				itemsDiff = 1
-			}
-
-			if(itemsDiff !== this.itemsDiff){
-				updateDiff(this, this.top, this.low, itemsDiff)
-			}
-
-			var mapDiff = this.totalMaxLimit - this.totalMinLimit
-
-			if(mapDiff !== this.mapDiff.value){
-				this.mapDiff = { value: this.mapDiff.value, fromValue: this.mapDiff.value, toValue: mapDiff, needAnimate: true, duration: 300 }
-			}
-			
-		}
-
-		function updateDiff(obj, top, low, diff){
-			var animation = new Animation(obj.itemsDiff, diff, 300, appTime)
-
-			obj.textFadeOut = new Animation(1, 0, 400, appTime)
-			obj.textFadeIn = new Animation(0, 1, 400, appTime)
-
-			if(!obj.textAnimation){
-
-				obj.holdedNextDiff = diff
-				obj.holdedLow = obj.low
-				obj.holdedDiff = obj.itemsDiff
-
-				if(diff > obj.itemsDiff){
-					obj.textAnimation = new Animation(0, 60 * dpx, 300, appTime)
-				}else{
-					obj.textAnimation = new Animation(0, -60 * dpx, 300, appTime)
-				}
-			}
-
-			obj.animation = animation
+			this.setDifference()
 		}
 
 		this.render = function(){
 			ctx.fillStyle = "#8E8E93"
 
-			for(var i = 0; i < this._stacked.length; i++){
-				var current = this._stacked[i]
 
-				for(var c = 0; c < current.length; c++){
-					var item = current[c]
-
-					if(item.needAnimate){
-						if(!item.animationStart){
-							item.animationStart = appTime
-						}
-						var q = this.animate(item)
-						if(q === false){
-							this._stacked[i][c].needAnimate = false
-						}else{
-							this._stacked[i][c].value = q
-						}
-
-						didUpdate = true
-					}	
+			if(this.labelsDiff.shouldUpdate){
+				var a = this.animate(this.labelsDiff)
+				if(a === 'didEnd'){
+					this.labelsDiff.shouldUpdate = false
 				}
+				else{
+					if(type === 'line' && !y_scaled){
+					}
+					this.labelsDiff.value = a
+				}				
+
+				didUpdate = true
+			}
+
+			if(this.labelsAnimated){
+
+				var _i = null
+
+				for(var i = 0; i < this._stacked.length; i++){
+					var current = this._stacked[i]
+
+					for(var c = 0; c < current.length; c++){
+						var item = current[c]
+
+						if(item.needAnimate){
+							_c = c
+							if(!item.animationStart){
+								item.animationStart = appTime
+							}
+							var q = this.animate(item)
+							if(q === 'didEnd'){
+								this._stacked[i][c].needAnimate = false
+
+								if(i + 1 == this._stacked.length && c === _c){
+									this.labelsAnimated = false
+								}
+							}else{
+								this._stacked[i][c].value = q
+							}
+						}	
+					}
+				}
+
+				this.setMapDifference()
+				this.updateLimits()
+				didUpdate = true
 			}
 
 			if(this.mapDiff.needAnimate){
@@ -929,7 +978,8 @@ function TelegramGerraCharts(initialData, type){
 					this.mapDiff.animationStart = appTime
 				}
 				var q = this.animate(this.mapDiff)
-				if(q === false){
+
+				if(q === 'didEnd'){
 					this.mapDiff.needAnimate = false
 				}else{
 					this.mapDiff.value = q
@@ -949,6 +999,7 @@ function TelegramGerraCharts(initialData, type){
 			}
 
 			if(this.textFadeOut){
+
 				var d = this.textFadeOut.animate(appTime)
 
 				if(d === false){
@@ -962,6 +1013,8 @@ function TelegramGerraCharts(initialData, type){
 			}
 
 			if(this.textFadeIn){
+
+
 				var d = this.textFadeIn.animate(appTime)
 
 				if(d === false){
@@ -972,20 +1025,6 @@ function TelegramGerraCharts(initialData, type){
 				}
 				didUpdate = true
 			}
-
-			if(this.animation){
-
-				var d = this.animation.animate(appTime)
-
-				if(d === false){
-					this.animation = null
-				}else{
-					this.itemsDiff = d
-				}
-				
-				didUpdate = true
-			}
-
 
 			if(y_scaled){
 				if(this.ownScales){
@@ -1042,25 +1081,17 @@ function TelegramGerraCharts(initialData, type){
 
 						current.scale = -(chartHeight - PREVIEW_PT) / current.itemsDiff;
 						current.offset = chartHeight - current.low * current.scale;
-
 					}
 				}
 			}
 			
-			this.mapScale = -previewHeight / this.mapDiff.value
-			this.mapOffset = HEIGHT - this.totalMinLimit * this.mapScale
+			var textDelta = Math.floor(this.labelsDiff.value / Math.floor(yLablesOffset));
 
-
-			this.scale = -(chartHeight - PREVIEW_PT) / this.itemsDiff;
+			this.scale = -chartHeight / this.labelsDiff.value;
 			this.offset = chartHeight - this.low * this.scale;
 
-			var textDelta = Math.floor(this.holdedDiff / Math.ceil(yLablesOffset));
-			var textScale = -(chartHeight - PREVIEW_PT) / this.holdedDiff;
-			var textOffset = chartHeight - this.holdedLow * textScale;
-
-			var nextTextDelta =  Math.floor(this.holdedNextDiff / Math.ceil(yLablesOffset));
-			var nextTextScale = -(chartHeight - PREVIEW_PT) / this.holdedNextDiff; 
-			var nextTextOffset = chartHeight - this.low * nextTextScale;
+			this.mapScale = -previewHeight / this.mapDiff.value
+			this.mapOffset = HEIGHT - this.totalMinLimit * this.mapScale
 
 			if(y_scaled){
 
@@ -1069,86 +1100,43 @@ function TelegramGerraCharts(initialData, type){
 
 				if(left && left.visible){
 
-					var textDelta = Math.floor(left.holdedDiff / Math.ceil(yLablesOffset));
-					var textScale = -(chartHeight - PREVIEW_PT) / left.holdedDiff;
-					var textOffset = chartHeight - left.holdedLow * textScale;
+					var textDelta = Math.floor(left.itemsDiff / Math.floor(yLablesOffset));
+					var textScale = -chartHeight / left.itemsDiff;
+					var textOffset = chartHeight - left.low * textScale;
 
-					var nextTextDelta =  Math.floor(left.holdedNextDiff / Math.ceil(yLablesOffset));
-					var nextTextScale = -(chartHeight - PREVIEW_PT) / left.holdedNextDiff; 
-					var nextTextOffset = chartHeight - left.low * nextTextScale;
+					for (var i = 0; i < yLablesOffset; i++) {
 
-
-					for (var i = 0; i < yLablesOffset + 1; i++) {
-
-						var val = left.low + nextTextDelta * i
-						var newY = timeStampToPX(val, nextTextScale, nextTextOffset);
+						var val = left.low + textDelta * i
+						var newY = timeStampToPX(val, textScale, textOffset);
 
 						if(val === 0){
 							ctx.fillText(formatNumber(val, true), 0, 0 - Y_LABELS_BP);
 							continue
 						}
 
-						ctx.globalAlpha = left.textOpacity / 10
+						ctx.globalAlpha = 0.1
 						drawLine(i, newY)
 
 						ctx.fillStyle = left.fontColor
 						ctx.globalAlpha = left.textOpacity
 						ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
-
-						if(left.prevTextOpacity === 0){
-							continue
-						}
-
-						var value = left.holdedLow + textDelta * i
-						var y = timeStampToPX(value, textScale, textOffset);
-
-						if(left.textAnimation){
-							y += left.textAnimation.value
-							if(y > chartHeight){
-								continue
-							}
-						}
-
-
-						ctx.globalAlpha = left.prevTextOpacity / 10
-						drawLine(i, y)
-
-						ctx.globalAlpha = left.prevTextOpacity
-						ctx.fillText(formatNumber(value, true), 0, y - Y_LABELS_BP);
 					}
 				}
 				if(right && right.visible){
 
-					for (var i = 0; i < yLablesOffset + 1; i++) {
+					for (var i = 0; i < yLablesOffset; i++) {
 
-						var textDelta = Math.floor(right.holdedDiff / Math.ceil(yLablesOffset));
-						var textScale = -(chartHeight - PREVIEW_PT) / right.holdedDiff;
-						var textOffset = chartHeight - right.holdedLow * textScale;
+						var textDelta = Math.floor(right.itemsDiff / Math.floor(yLablesOffset));
+						var textScale = -chartHeight / right.itemsDiff;
+						var textOffset = chartHeight - right.low * textScale;
 
-						var nextTextDelta =  Math.floor(right.holdedNextDiff / Math.ceil(yLablesOffset));
-						var nextTextScale = -(chartHeight - PREVIEW_PT) / right.holdedNextDiff; 
-						var nextTextOffset = chartHeight - right.low * nextTextScale;
-
-						var val = right.low + nextTextDelta * i
-						var newY = timeStampToPX(val, nextTextScale, nextTextOffset);
+						var val = right.low + textDelta * i
+						var newY = timeStampToPX(val, textScale, textOffset);
 
 						ctx.fillStyle = right.fontColor
 
 						ctx.globalAlpha = right.textOpacity
 						ctx.fillText(formatNumber(val, true), WIDTH - Y_LABELS_RP, newY - Y_LABELS_BP);
-
-						var value = right.holdedLow + textDelta * i
-						var y = timeStampToPX(value, textScale, textOffset);
-
-						if(right.textAnimation){
-							y += right.textAnimation.value
-							if(y > chartHeight){
-								continue
-							}
-						}
-
-						ctx.globalAlpha = right.prevTextOpacity
-						ctx.fillText(formatNumber(value, true), WIDTH - Y_LABELS_RP, y - Y_LABELS_BP);
 
 					}
 				}
@@ -1156,42 +1144,20 @@ function TelegramGerraCharts(initialData, type){
 
 			else{
 
-				for (var i = 0; i < yLablesOffset + 1; i++) {
-
-					var val = this.low + nextTextDelta * i
-					var newY = timeStampToPX(val, nextTextScale, nextTextOffset);
+				for (var i = 0; i < yLablesOffset; i++) {
+					var val = this.low + textDelta * i
+					var newY = timeStampToPX(val, this.scale, this.offset);
 
 					if(val === 0){
 						ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
 						continue
 					}
 
-					ctx.globalAlpha = this.textOpacity / 10
+					ctx.globalAlpha = 0.1
 					drawLine(i, newY)
 
-					ctx.globalAlpha = this.textOpacity
+					ctx.globalAlpha = 1
 					ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
-
-					if(this.prevTextOpacity === 0){
-						continue
-					}
-
-					var value = this.holdedLow + textDelta * i
-					var y = timeStampToPX(value, textScale, textOffset);
-
-
-					if(this.textAnimation){
-						y += this.textAnimation.value
-						if(y > chartHeight){
-							continue
-						}
-					}
-
-					ctx.globalAlpha = this.prevTextOpacity / 10
-					drawLine(i, y)
-
-					ctx.globalAlpha = this.prevTextOpacity
-					ctx.fillText(formatNumber(value, true), 0, y - Y_LABELS_BP);
 				}
 			}
 		}
@@ -1199,7 +1165,7 @@ function TelegramGerraCharts(initialData, type){
 		this.animate = function(item){
 
 			if(item.toValue === item.value){
-				return false
+				return 'didEnd'
 			}
 
 	        var progress = (appTime - item.animationStart) / item.duration;
@@ -1300,7 +1266,6 @@ function TelegramGerraCharts(initialData, type){
 			textStep = step
 
 			if(textStep !== this.textStep){
-
 				if(this.textStep !== 1){
 					if(textStep > this.textStep){
 						this.textFade = new Animation(1, 0, 300, appTime)
@@ -1424,18 +1389,18 @@ function TelegramGerraCharts(initialData, type){
 				this.hovered = null
 				this.hoveredInPX = null
 
+				didUpdate = true
+
 				return
 			}
 
 			this.hoveredInPX = currentInPx
 			this.hovered = Math.floor(pxToTs(currentInPx, this.currentDiffScale, this.currentDiffOffset))
 
-
 			didUpdate = true
 		}
 
 		this.render = function(){
-
 
 			if(this.hovered && this.hovered !== null){
 
@@ -1482,7 +1447,7 @@ function TelegramGerraCharts(initialData, type){
 				}
 				else if(type === 'bar' && stacked){
 
-					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) 
+					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff)
 
 					for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 						var y = 0
@@ -1491,19 +1456,14 @@ function TelegramGerraCharts(initialData, type){
 						var column = columns[clmn]
 
 						if(xIndex === -1){
-							for(var z = clmn; 0 <= z; z--){
-								y += yAxis._stacked[0][z]
-							}
-
+							xIndex = 0
 							x = this.labels[0] * this.currentDiffScale + this.currentDiffOffset
 						}
 						else{
-							for(var z = clmn; 0 <= z; z--){
-								y += yAxis._stacked[xIndex][z]
-							}
-
 							x = (this.labels[xIndex] * this.currentDiffScale + this.currentDiffOffset)
 						}
+
+						y += yAxis._stacked[clmn][xIndex].value * yAxis.scale + yAxis.offset
 
 						var color = column.color
 
@@ -1515,8 +1475,8 @@ function TelegramGerraCharts(initialData, type){
 						ctx.fillStyle = color
 
 						ctx.moveTo(x, chartHeight)
-						ctx.lineTo(x, y * yAxis.scale + yAxis.offset)
-						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, y * yAxis.scale + yAxis.offset)
+						ctx.lineTo(x, y)
+						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, y)
 						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, chartHeight)
 
 						ctx.fill()
@@ -1682,7 +1642,7 @@ function TelegramGerraCharts(initialData, type){
 
 		this.value = value
 		this.duration = duration
-		this.start = startTime
+		this.start = startTime || 0
 		this.fromValue = value
 		this.toValue = toValue
 
