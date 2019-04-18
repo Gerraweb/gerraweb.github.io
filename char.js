@@ -63,7 +63,7 @@ function TelegramGerraCharts(initialData, type){
 
 		var newMouseX = (e.clientX - canvasBounds.left) * dpx
 
-		if(mouseX > 0 && mouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < HEIGHT * dpx - previewHeight){
+		if(mouseX > 0 && mouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < chartHeight){
 			xAxis.setHovered(mouseX)
 		}
 		else{
@@ -113,6 +113,9 @@ function TelegramGerraCharts(initialData, type){
 
 	function onMouseUp(){
 		mouseEvent = 'NONE'
+		if(xAxis.hovered){
+			xAxis.setHovered(null)
+		}
 	}
 
 	document.addEventListener('mousemove', onMouseMove)
