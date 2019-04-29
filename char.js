@@ -13,6 +13,23 @@ function TelegramGerraCharts(initialData, type, title){
 	var modal = document.createElement('div')
 	modal.classList.add('modal--contaniner')
 
+	var modalTopline = document.createElement('div')
+	modalTopline.classList.add('modal--topline')
+
+	var modalDate = document.createElement('span')
+	modalTopline.appendChild(modalDate)
+
+	var modalContent = document.createElement('div')
+	modalContent.classList.add('modal--content')
+
+	var modalValues = document.createElement('div')
+	modalValues.classList.add('modal--values')
+
+	modalContent.appendChild(modalValues)
+
+	modal.appendChild(modalTopline)
+	modal.appendChild(modalContent)
+
 	var canvas = document.createElement('canvas');
 	var labelsContainer = document.createElement('div');
 	labelsContainer.classList.add('labelsContainer')
@@ -28,6 +45,7 @@ function TelegramGerraCharts(initialData, type, title){
 	var dateRangeContainer = document.createElement('div')
 	dateRangeContainer.classList.add('date--range-container')
 
+	
 
 	dateRangeContainer.appendChild(dateRangeLeft)
 	dateRangeContainer.appendChild(dateRangeMiddle)
@@ -94,8 +112,8 @@ function TelegramGerraCharts(initialData, type, title){
 
 		var newMouseX = (e.clientX - canvasBounds.left) * dpx
 
-		if(mouseX > 0 && mouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < chartHeight + X_TEXT_PT){
-			xAxis.setHovered(mouseX)
+		if(newMouseX > 0 && newMouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < chartHeight + X_TEXT_PT){
+			xAxis.setHovered(newMouseX)
 		}
 		else{
 			if(xAxis.hovered){
@@ -737,13 +755,14 @@ function TelegramGerraCharts(initialData, type, title){
 
 			this.columns = columns
 
-			if(columns.length > 1){
-				for(var i = 0; i < columns.length; i++){
-					var current = columns[i]
+			
+			for(var i = 0; i < columns.length; i++){
+				var current = columns[i]
 
+				if(columns.length > 1){
 					var inputWrap = document.createElement('div')
 					inputWrap.classList.add('input-wrapp')
-					
+
 					labelsContainer.appendChild(inputWrap)
 
 					var mask = document.createElement('div')
@@ -759,71 +778,101 @@ function TelegramGerraCharts(initialData, type, title){
 					mask.appendChild(tick)
 					mask.appendChild(text)
 
-				 	var input = document.createElement('input')
-				 	input.type = "checkbox"
-				 	input.setAttribute('data-index', i);
-				 	input.checked = true
+					var input = document.createElement('input')
+					input.type = "checkbox"
+					input.setAttribute('data-index', i);
+					input.checked = true
 					input.addEventListener('click', this.toggleColumn.bind(this))
 
-				 	inputWrap.appendChild(input)
-				 	inputWrap.appendChild(mask)
+					inputWrap.appendChild(input)
+					inputWrap.appendChild(mask)
+				}
+
+				var mRow = document.createElement('div')
+
+				var mKey = document.createElement('span')
+				mKey.innerHTML = current.name
+
+				var mValue = document.createElement('span')
+				mValue.style.color = current.color
+				mValue.innerHTML = '1'
+
+				mRow.appendChild(mKey)
+				mRow.appendChild(mValue)
+				modalValues.appendChild(mRow)
+
+				console.log()
+
+				if(type == 'bar' && stacked && i == columns.length - 1){
+
+					var mRow = document.createElement('div')
+					var mKey = document.createElement('span')
+					mKey.innerHTML = 'All'
+
+					var mValue = document.createElement('span')
+					mValue.style.color = '#000'
+					mValue.innerHTML = '1'
+
+					mRow.appendChild(mKey)
+					mRow.appendChild(mValue)
+					modalValues.appendChild(mRow)
+				}
 
 
-				 	if(type === 'line'){
-				 		columns[i].opacity = { value: 1 }
-				 	}
-				 	if(y_scaled){
-				 		for(var c = 0; c < this.columns.length; c++){
-							var column = this.columns[c];
+				if(type === 'line'){
+					columns[i].opacity = { value: 1 }
+				}
+				if(y_scaled){
+					for(var c = 0; c < this.columns.length; c++){
+						var column = this.columns[c];
 
-							var ownOffset = {
-								low: { value: 0 },
-								top: { value: 1 },
-								totalMinLimit: { value: 0 },
-								totalMaxLimit: { value: 1 },
-								scale: 0,
-								offset: 0,
-								mapScale: 0,
-								mapOffset: 0,
-								currentTextLow: 1,
-								currentTextTop: 2,
-								currentTextOpacity: {
-									value: 1,
-									toValue: 1,
-									fromValue: 1,
-									duration: 0,
-									shouldUpdate: false
-								},
-								prevTextOpacity: {
-									value: 0,
-									toValue: 0,
-									fromValue: 0,
-									duration: 0,
-									shouldUpdate: false
-								},
-								animatatedTextDelta: {
-									value: 0,
-									toValue: 0,
-									fromValue: 0,
-									duration: 0,
-									shouldUpdate: false
-								},
-								animatatedCurrentTextDelta: {
-									value: 0,
-									toValue: 0,
-									fromValue: 0,
-									duration: 0,
-									shouldUpdate: false
-								},
-								visible: true,
-								color: this.columns[c].color,
-								didFirstRender: false
-							}
+						var ownOffset = {
+							low: { value: 0 },
+							top: { value: 1 },
+							totalMinLimit: { value: 0 },
+							totalMaxLimit: { value: 1 },
+							scale: 0,
+							offset: 0,
+							mapScale: 0,
+							mapOffset: 0,
+							currentTextLow: 1,
+							currentTextTop: 2,
+							currentTextOpacity: {
+								value: 1,
+								toValue: 1,
+								fromValue: 1,
+								duration: 0,
+								shouldUpdate: false
+							},
+							prevTextOpacity: {
+								value: 0,
+								toValue: 0,
+								fromValue: 0,
+								duration: 0,
+								shouldUpdate: false
+							},
+							animatatedTextDelta: {
+								value: 0,
+								toValue: 0,
+								fromValue: 0,
+								duration: 0,
+								shouldUpdate: false
+							},
+							animatatedCurrentTextDelta: {
+								value: 0,
+								toValue: 0,
+								fromValue: 0,
+								duration: 0,
+								shouldUpdate: false
+							},
+							visible: true,
+							color: this.columns[c].color,
+							didFirstRender: false
+						}
 
 
-							this.ownScales[c] = ownOffset
-				 		}
-				 	}
+						this.ownScales[c] = ownOffset
+					}
 				}
 			}
 		}
@@ -1542,7 +1591,6 @@ function TelegramGerraCharts(initialData, type, title){
 			dateRangeLeft.innerHTML = formatDate(left, 'topline')
 			dateRangeRight.innerHTML = formatDate(right, 'topline')
 
-
 			this.currentDiff = right - left
 
 			if(type === 'line'){
@@ -1693,7 +1741,6 @@ function TelegramGerraCharts(initialData, type, title){
 			this.hoveredInPX = currentInPx
 			this.hovered = Math.floor(pxToTs(currentInPx, this.currentDiffScale, this.currentDiffOffset))
 
-
 			var modalBounds = modal.getBoundingClientRect()
 			var modalX = (currentInPx / dpx) + MODAL_ML
 			if (modalX < 0) modalX = 0
@@ -1706,7 +1753,6 @@ function TelegramGerraCharts(initialData, type, title){
 			if(modalY < 0) modalY = mouseY / dpx + 20 + MODAL_MT
 			modal.style.top = modalY + 'px'
 
-
 			didUpdate = true
 		}
 
@@ -1716,11 +1762,11 @@ function TelegramGerraCharts(initialData, type, title){
 
 				var columns = yAxis.columns
 
-				var xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit) / this.stepTsDiff)
-
 				if(percentage){
 
-					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) 
+					var xIndex = Math.floor((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) + 1
+
+					modalDate.innerHTML = formatDate(this.labels[xIndex], 'modal')
 
 					ctx.lineWidth = 1
 					ctx.strokeStyle = '#182D3B'
@@ -1735,6 +1781,10 @@ function TelegramGerraCharts(initialData, type, title){
 						var x = 0
 
 						var column = columns[clmn]
+
+						modalValues.children[clmn].children[0].innerHTML = Math.round(yAxis._stacked[xIndex][clmn].value) + '% ' + column.name
+
+						modalValues.children[clmn].children[1].innerHTML = column.columns[xIndex]
 
 						if(xIndex === -1){
 							for(var z = clmn; 0 <= z; z--){
@@ -1757,13 +1807,21 @@ function TelegramGerraCharts(initialData, type, title){
 				}
 				else if(type === 'bar' && stacked){
 
-					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff)
+					var xIndex = Math.floor((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) + 1
+
+					modalDate.innerHTML = formatDate(this.labels[xIndex], 'modal')
 
 					for(var clmn = yAxis.columns.length - 1; clmn >= 0; clmn--){
 						var y = 0
 						var x = 0
 
 						var column = columns[clmn]
+
+						modalValues.children[clmn].children[1].innerHTML = column.columns[xIndex]
+
+						if(clmn == yAxis.columns.length - 1){
+							modalValues.children[clmn + 1].children[1].innerHTML = yAxis._stacked[clmn][xIndex].value
+						}
 
 						if(xIndex === -1){
 							xIndex = 0
@@ -1794,11 +1852,15 @@ function TelegramGerraCharts(initialData, type, title){
 				}
 				else if(type === 'bar'){
 
-					xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) 
+					var xIndex = Math.floor((this.hovered - this.leftAbsoluteTsLimit - this.stepTsDiff) / this.stepTsDiff) + 1
+
+					modalDate.innerHTML = formatDate(this.labels[xIndex], 'modal')
 
 					for(var c = 0; c < columns.length; c++){
 
 						var column = columns[c]
+
+						modalValues.children[c].children[1].innerHTML = column.columns[xIndex]
 
 						ctx.globalAlpha = 1
 						ctx.beginPath()
@@ -1818,6 +1880,11 @@ function TelegramGerraCharts(initialData, type, title){
 					}
 				}
 				else if(y_scaled){
+
+					var xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit) / this.stepTsDiff)
+
+					modalDate.innerHTML = formatDate(this.labels[xIndex], 'modal')
+
 					ctx.lineWidth = 1 * dpx
 					ctx.strokeStyle = '#182D3B'
 					ctx.globalAlpha = 0.1
@@ -1829,6 +1896,8 @@ function TelegramGerraCharts(initialData, type, title){
 					for(var c = 0; c < columns.length; c++){
 
 						var column = columns[c]
+
+						modalValues.children[c].children[1].innerHTML = column.columns[xIndex]
 
 						if(column.visible === false){
 							continue
@@ -1855,6 +1924,9 @@ function TelegramGerraCharts(initialData, type, title){
 				}
 				else{
 
+					var xIndex = Math.round((this.hovered - this.leftAbsoluteTsLimit) / this.stepTsDiff)
+
+					modalDate.innerHTML = formatDate(this.labels[xIndex], 'modal')
 
 					ctx.lineWidth = 1
 					ctx.strokeStyle = '#182D3B'
@@ -1866,6 +1938,9 @@ function TelegramGerraCharts(initialData, type, title){
 
 					for(var c = 0; c < columns.length; c++){
 						var column = columns[c]
+
+						modalValues.children[c].children[1].innerHTML = column.columns[xIndex]
+
 						if(column.visible === false){
 							continue
 						}
@@ -1956,7 +2031,7 @@ function TelegramGerraCharts(initialData, type, title){
 				s = s
 			}
 			else if(type === 'modal'){
-				s = s + DAY_NAMES[date.getDay()] + ', ' + s;
+				s = DAY_NAMES[date.getDay()] + ', ' + s;
 			}
 
 			return s
