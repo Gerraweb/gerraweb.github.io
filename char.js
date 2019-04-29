@@ -1,4 +1,4 @@
-function TelegramGerraCharts(initialData, type){
+function TelegramGerraCharts(initialData, type, title){
 
 	var stacked = false
 	var percentage = false
@@ -10,12 +10,42 @@ function TelegramGerraCharts(initialData, type){
 
 	document.body.appendChild(wrapper)
 
+	var modal = document.createElement('div')
+	modal.classList.add('modal--contaniner')
+
 	var canvas = document.createElement('canvas');
 	var labelsContainer = document.createElement('div');
 	labelsContainer.classList.add('labelsContainer')
 
+	var topLineContainer = document.createElement('div');
+	topLineContainer.classList.add('topline-container')
+
+	var dateRangeLeft = document.createElement('span');
+	var dateRangeMiddle = document.createElement('span');
+	dateRangeMiddle.innerHTML = '-'
+	var dateRangeRight = document.createElement('span');
+
+	var dateRangeContainer = document.createElement('div')
+	dateRangeContainer.classList.add('date--range-container')
+
+
+	dateRangeContainer.appendChild(dateRangeLeft)
+	dateRangeContainer.appendChild(dateRangeMiddle)
+	dateRangeContainer.appendChild(dateRangeRight)
+
+	var chartTitle = document.createElement('h2');
+	chartTitle.innerHTML = title
+
+	
+	topLineContainer.appendChild(chartTitle)
+	topLineContainer.appendChild(dateRangeContainer)
+
+	wrapper.appendChild(topLineContainer)
 	wrapper.appendChild(canvas)
 	wrapper.appendChild(labelsContainer)
+
+	wrapper.appendChild(modal)
+
 
 	var ctx = canvas.getContext('2d');
 	var dpx = window.devicePixelRatio;
@@ -29,6 +59,7 @@ function TelegramGerraCharts(initialData, type){
 	var PREVIEW_CW = 12 * dpx
 	var X_TEXT_PT = 15 * dpx
 	var Y_LABELS_OFFSET = 48 * dpx
+	var Y_LABELS_TP = 20 * dpx
 	var Y_LABELS_BP = 6 * dpx
 	var Y_LABELS_RP = 30 * dpx
 	var CHART_LW = 2 * dpx
@@ -41,9 +72,9 @@ function TelegramGerraCharts(initialData, type){
 
 	var appTime = 0
 
-	var chartHeight = 1 * dpx
+	var chartHeight = 0 * dpx
 	var previewHeight = 40 * dpx
-	var yLablesOffset = 1 * dpx
+	var yLegendLabelsCount = 1 * dpx
 
 	var pointer = 30 * dpx
 
@@ -53,7 +84,7 @@ function TelegramGerraCharts(initialData, type){
 	var mouseX = 0
 	var mouseEvent = 'NONE'
 
-    var MODAL_ML = -25;
+    var MODAL_ML = -50;
     var MODAL_MT = !('ontouchstart' in window) ? 8 : 40;
 
 
@@ -63,7 +94,7 @@ function TelegramGerraCharts(initialData, type){
 
 		var newMouseX = (e.clientX - canvasBounds.left) * dpx
 
-		if(mouseX > 0 && mouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < chartHeight){
+		if(mouseX > 0 && mouseX < canvasBounds.width * dpx && mouseY > 0 && mouseY < chartHeight + X_TEXT_PT){
 			xAxis.setHovered(mouseX)
 		}
 		else{
@@ -85,7 +116,7 @@ function TelegramGerraCharts(initialData, type){
 		}
 
 		if(mouseEvent !== 'NONE'){
-			yAxis.updateLimits(xAxis)
+			yAxis.setLowAndTop()
 			didUpdate = true
 		}
 
@@ -149,10 +180,10 @@ function TelegramGerraCharts(initialData, type){
 		canvas.setAttribute('height', HEIGHT);
 
 		chartHeight = HEIGHT - previewHeight - PREVIEW_PT
-		yLablesOffset = chartHeight / Y_LABELS_OFFSET
+		yLegendLabelsCount = chartHeight / Y_LABELS_OFFSET
 
-		if(yLablesOffset < 1){
-			yLablesOffset = 1
+		if(yLegendLabelsCount < 1){
+			yLegendLabelsCount = 1
 		}
 
 		var names = initialData.names
@@ -192,13 +223,22 @@ function TelegramGerraCharts(initialData, type){
 			}
 		}
 
-		xAxis = new AxisX()
 
+		xAxis = new AxisX()
 		xAxis.setDifference(data.axisX)
 
-		yAxis = new AxisY()
-
-		yAxis.setInitialData(data.yColumns)
+		if(type === 'area'){
+			yAxis = new AreaAxisY()
+			yAxis.setInitialData(data.yColumns)
+		}
+		else if(type === 'bar' && stacked){
+			yAxis = new StackedBarAxisY()
+			yAxis.setInitialData(data.yColumns)
+		}
+		else{
+			yAxis = new AxisY()
+			yAxis.setInitialData(data.yColumns)
+		}
 	}
 
 	function renderPrewie(){
@@ -231,9 +271,7 @@ function TelegramGerraCharts(initialData, type){
 		ctx.fill()
 
 
-
 		ctx.beginPath();
-
 
 		ctx.moveTo(xAxis.currentLeftPositionPx + PREVIEW_CW, HEIGHT - previewHeight)
 		ctx.lineTo(xAxis.currentLeftPositionPx + PREVIEW_CW, HEIGHT)
@@ -293,7 +331,7 @@ function TelegramGerraCharts(initialData, type){
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
 
-				drawBarStackedChart(labels, color, clmn, 0, xAxis.labels.length, xAxis.scaleRatio, xAxis.offset, HEIGHT, yAxis.mapScale, yAxis.mapOffset)
+				drawBarStackedChart(labels, yAxis._stacked, color, clmn, 0, xAxis.labels.length, xAxis.scaleRatio, xAxis.offset, HEIGHT, yAxis.mapScale, yAxis.mapOffset)
 			}
 		}
 		else if(type === 'bar'){
@@ -308,9 +346,11 @@ function TelegramGerraCharts(initialData, type){
 		else{
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
 
-				if(!yAxis.columns[clmn].visible){
+				if(yAxis.columns[clmn].opacity.value === 0){
 					continue
 				}
+
+				ctx.globalAlpha = yAxis.columns[clmn].opacity.value
 
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
@@ -339,8 +379,7 @@ function TelegramGerraCharts(initialData, type){
 				var color = yAxis.columns[clmn].color
 
 
-
-				drawBarStackedChart(labels, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset, true)
+				drawBarStackedChart(labels, yAxis._stacked, color, clmn, xAxis.currentDiffLeftPositionIndex, xAxis.currentDiffRightPositionIndex, xAxis.currentDiffScale, xAxis.currentDiffOffset, chartHeight, yAxis.scale, yAxis.offset, true)
 			}
 		}
 		else if(type === 'bar'){
@@ -359,9 +398,11 @@ function TelegramGerraCharts(initialData, type){
 		else{
 			for(var clmn = 0; clmn < yAxis.columns.length; clmn++){
 
-				if(yAxis.columns[clmn].visible === false){
+				if(yAxis.columns[clmn].opacity.value === 0){
 					continue
 				}
+
+				ctx.globalAlpha = yAxis.columns[clmn].opacity.value
 
 				var labels = yAxis.columns[clmn].columns
 				var color = yAxis.columns[clmn].color
@@ -399,8 +440,11 @@ function TelegramGerraCharts(initialData, type){
 		}
 
 		if(!yAxis.didFirstRender){
-			yAxis.setTotalLimit()
-			yAxis.updateLimits()
+			yAxis.handleLabels()
+			yAxis.setTotalLimit(true)
+			yAxis.setLowAndTop(true)
+			yAxis.setScaleRatio()
+
 			yAxis.didFirstRender = true
 		}
 
@@ -409,12 +453,19 @@ function TelegramGerraCharts(initialData, type){
 
 			didUpdate = false
 
+			
+			yAxis.preRender()
+
+			renderMain()
+			yAxis.render()
+
+			ctx.clearRect(0, chartHeight, WIDTH, HEIGHT);
+
+
+			xAxis.render()
+
 			renderMapPathes()
 			renderPrewie()
-			renderMain()
-			xAxis.render()
-			yAxis.render()
-			
 		}
 
 		requestAnimationFrame(render)
@@ -429,7 +480,6 @@ function TelegramGerraCharts(initialData, type){
 		ctx.lineJoin = 'bevel';
 		ctx.lineCap = 'butt';
 		ctx.lineWidth = lineWidth
-		ctx.globalAlpha = 1
 
 		var yScale = yScaleRatio
 		var yOffset = yOffset
@@ -437,21 +487,20 @@ function TelegramGerraCharts(initialData, type){
 		if(y_scaled){
 			var ownScale = yAxis.ownScales[index]
 			if(isMap){
-				yScale = ownScale.previewScale
-				yOffset = ownScale.previewOffset
+				yScale = ownScale.mapScale
+				yOffset = ownScale.mapOffset
 			}
 			else{
 				yScale = ownScale.scale
 				yOffset = ownScale.offset
 			}
-
 		}
 
 		for(var i = start; i < end; i++){
 			var x = xAxis.labels[i];
-			var y = labels[i];
+			var y = timeStampToPX(labels[i], yScale, yOffset)
 
-			ctx.lineTo(timeStampToPX(x, xScaleRatio, xOffset), timeStampToPX(y, yScale, yOffset))
+			ctx.lineTo(timeStampToPX(x, xScaleRatio, xOffset), y)
 		}
 
 		ctx.strokeStyle = color
@@ -497,7 +546,7 @@ function TelegramGerraCharts(initialData, type){
 	}
 
 
-	function drawBarStackedChart(labels, color, index, start, end, xScaleRatio, xOffset, bottom, yScaleRatio, yOffset, isMain){
+	function drawBarStackedChart(labels, yLabels, color, index, start, end, xScaleRatio, xOffset, bottom, yScaleRatio, yOffset, isMain){
 		ctx.globalAlpha = 1
 		ctx.fillStyle = color
 
@@ -509,7 +558,7 @@ function TelegramGerraCharts(initialData, type){
 		for(var i = start; i < end; i++){
 
 			var x = xAxis.labels[i]
-			var y = yAxis._stacked[index][i].value;
+			var y = yLabels[index][i].value;
 
 			var _v = timeStampToPX(y, yScaleRatio, yOffset)
 			var _x = timeStampToPX(x, xScaleRatio, xOffset)
@@ -577,16 +626,22 @@ function TelegramGerraCharts(initialData, type){
 		this.didFirstRender = false
 
 		this.columns = []
-		this.hiddenColumns = []
 
 		this._stacked = []
+
 		this.ownScales = []
 
 		this.labelsAnimated = false
 
-		this.low = 0
-		this.top = 1
-		this.labelsDiff = {
+		this.top = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 0,
+			shouldUpdate: false
+		}
+
+		this.low = {
 			value: 0,
 			toValue: 0,
 			fromValue: 0,
@@ -597,23 +652,59 @@ function TelegramGerraCharts(initialData, type){
 		this.scale = 1
 		this.offset = 1
 
-
-
-		this.totalMaxLimit = 0
-		this.totalMinLimit = 0
-		this.mapScale = 1
-		this.mapOffset = 1
-
-
-		this.mapDiff = {
+		this.totalMaxLimit = {
 			value: 0,
 			toValue: 0,
 			fromValue: 0,
-			duration: 300
+			duration: 0,
+			shouldUpdate: false
 		}
 
-		this.textOpacity = 1
-		this.prevTextOpacity = 0
+		this.totalMinLimit = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 0,
+			shouldUpdate: false
+		}
+
+		this.mapScale = 1
+		this.mapOffset = 1
+
+		this.currentTextLow = 1
+		this.currentTextTop = 2
+
+		this.currentTextOpacity = {
+			value: 1,
+			toValue: 1,
+			fromValue: 1,
+			duration: 0,
+			shouldUpdate: false
+		}
+
+		this.prevTextOpacity = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 0,
+			shouldUpdate: false
+		}
+
+		this.animatatedTextDelta = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 0,
+			shouldUpdate: false
+		}
+
+		this.animatatedCurrentTextDelta = {
+			value: 0,
+			toValue: 0,
+			fromValue: 0,
+			duration: 0,
+			shouldUpdate: false
+		}
 
 		this.mapShouldUpdate = false
 		this.chartSholdUpdate = false
@@ -625,9 +716,19 @@ function TelegramGerraCharts(initialData, type){
 
 			current.visible = !current.visible
 
-			this.setTotalLimit()
-			this.updateLimits()
+			if(type === 'line'){
+				if(current.visible){
+					this.columns[index].opacity = { value: this.columns[index].opacity.value, fromValue: this.columns[index].opacity.value, toValue: 1, shouldUpdate: true, duration: 300, animationStart: appTime }
+				}
+				else{
+					this.columns[index].opacity = { value: this.columns[index].opacity.value, fromValue: this.columns[index].opacity.value, toValue: 0, shouldUpdate: true, duration: 300, animationStart: appTime }
+				}
+			}
 
+			this.handleLabels()
+			this.setTotalLimit()
+			this.setLowAndTop()
+			this.setScaleRatio()
 
 			didUpdate = true
 		}
@@ -643,7 +744,6 @@ function TelegramGerraCharts(initialData, type){
 					var inputWrap = document.createElement('div')
 					inputWrap.classList.add('input-wrapp')
 					
-
 					labelsContainer.appendChild(inputWrap)
 
 					var mask = document.createElement('div')
@@ -668,9 +768,483 @@ function TelegramGerraCharts(initialData, type){
 				 	inputWrap.appendChild(input)
 				 	inputWrap.appendChild(mask)
 
+
+				 	if(type === 'line'){
+				 		columns[i].opacity = { value: 1 }
+				 	}
+				 	if(y_scaled){
+				 		for(var c = 0; c < this.columns.length; c++){
+							var column = this.columns[c];
+
+							var ownOffset = {
+								low: { value: 0 },
+								top: { value: 1 },
+								totalMinLimit: { value: 0 },
+								totalMaxLimit: { value: 1 },
+								scale: 0,
+								offset: 0,
+								mapScale: 0,
+								mapOffset: 0,
+								currentTextLow: 1,
+								currentTextTop: 2,
+								currentTextOpacity: {
+									value: 1,
+									toValue: 1,
+									fromValue: 1,
+									duration: 0,
+									shouldUpdate: false
+								},
+								prevTextOpacity: {
+									value: 0,
+									toValue: 0,
+									fromValue: 0,
+									duration: 0,
+									shouldUpdate: false
+								},
+								animatatedTextDelta: {
+									value: 0,
+									toValue: 0,
+									fromValue: 0,
+									duration: 0,
+									shouldUpdate: false
+								},
+								animatatedCurrentTextDelta: {
+									value: 0,
+									toValue: 0,
+									fromValue: 0,
+									duration: 0,
+									shouldUpdate: false
+								},
+								visible: true,
+								color: this.columns[c].color,
+								didFirstRender: false
+							}
+
+
+							this.ownScales[c] = ownOffset
+				 		}
+				 	}
 				}
 			}
 		}
+
+		this.setTotalLimit = function(withoutAnimation){
+
+			var columns = this.columns
+
+			if(y_scaled){
+
+				for(var c = 0; c < this.columns.length; c++){
+					var column = columns[c];
+
+					ownOffset = this.ownScales[c]
+					ownOffset.visible = column.visible
+
+					if(ownOffset.visible === false){
+						continue
+					}
+
+					var lowTop = this.calculateLowTop(ownOffset, [column], true, true)
+					ownOffset = lowTop.obj
+
+					if(!ownOffset.didFirstRender){
+						ownOffset = this.setScaleRatio(ownOffset)
+					}
+
+					this.ownScales[c] = ownOffset
+				}
+			}
+			else{
+				this.calculateLowTop(this, columns, withoutAnimation, true)
+			}
+		}
+
+		this.setLowAndTop = function(withoutAnimation){
+
+			var columns = this.columns
+
+			var newTopValue = -Infinity
+			var newLowValue = Infinity
+
+			if(y_scaled){
+				for(var c = 0; c < this.columns.length; c++){
+
+					var column = columns[c];
+
+					ownOffset = this.ownScales[c]
+					ownOffset.visible = column.visible
+
+					if(ownOffset.visible === false){
+						continue
+					}
+
+					var lowTop = this.calculateLowTop(ownOffset, [column], withoutAnimation)
+					ownOffset = lowTop.obj
+
+					if(!ownOffset.didFirstRender){
+						ownOffset = this.setScaleRatio(ownOffset)
+						ownOffset.didFirstRender = true
+					}
+
+					ownOffset = this.handleLegendLabelsPosition(lowTop.newTopValue, lowTop.newLowValue, ownOffset)
+
+					this.ownScales[c] = ownOffset
+				}
+			}
+			else{
+				var lowTop = this.calculateLowTop(this, this.columns, withoutAnimation)
+				this.handleLegendLabelsPosition(lowTop.newTopValue, lowTop.newLowValue, this)
+			}
+		}
+
+		this.handleLegendLabelsPosition = function(newTopValue, newLowValue, obj){
+
+			var newDiff = newTopValue - newLowValue
+			var oldDiff = obj.currentTextTop - obj.currentTextLow
+
+			if(oldDiff !== newDiff || newLowValue !== obj.currentTextLow || newTopValue !== obj.currentTextTop){
+
+				obj.currentTextLow = newLowValue
+				obj.currentTextTop = newTopValue
+
+				if(!obj.animatatedTextDelta.shouldUpdate || !obj.animatatedCurrentTextDelta.shouldUpdate){
+					if(newDiff > oldDiff){
+
+						obj.animatatedTextDelta = { value: 0, fromValue: 0, toValue: (Y_LABELS_OFFSET + Y_LABELS_BP + Y_LABELS_TP) * 2, shouldUpdate: true, duration: 300, animationStart: appTime }
+
+						obj.animatatedCurrentTextDelta = { value: -Y_LABELS_OFFSET - Y_LABELS_BP, fromValue: -Y_LABELS_OFFSET - Y_LABELS_BP - Y_LABELS_TP, toValue: 0, shouldUpdate: true, duration: 300, animationStart: appTime }
+
+					}
+					else{
+						obj.animatatedTextDelta = { value: 0, fromValue: 0, toValue: (-Y_LABELS_OFFSET - Y_LABELS_BP - Y_LABELS_TP) * 2, shouldUpdate: true, duration: 300, animationStart: appTime }
+						
+						obj.animatatedCurrentTextDelta = { value: Y_LABELS_OFFSET + Y_LABELS_BP, fromValue: Y_LABELS_TP + Y_LABELS_OFFSET + Y_LABELS_BP, toValue: 0, shouldUpdate: true, duration: 300, animationStart: appTime }
+					}
+
+					obj.prevTextOpacity = { value: 1, fromValue: 1, toValue: 0, shouldUpdate: true, duration: 200, animationStart: appTime }
+					obj.currentTextOpacity = { value: 0, fromValue: 0, toValue: 1, shouldUpdate: true, duration: 300, animationStart: appTime }
+				}
+			}
+
+			return obj
+		}
+
+		this.calculateLowTop = function(obj, columns, withoutAnimation, isMap){
+
+			if(!obj) obj = this
+
+			var _low = 'low'
+			var _top = 'top'
+			var leftLimit = xAxis.currentDiffLeftPositionIndex
+			var rightLimit =  xAxis.currentDiffRightPositionIndex
+
+			if(isMap){
+				_low = 'totalMinLimit'
+				_top = 'totalMaxLimit'
+				leftLimit = 0
+				rightLimit = xAxis.labels.length
+			}
+
+			var newTopValue = -Infinity
+			var newLowValue = Infinity
+
+			if(type === 'bar'){
+				newLowValue = 0
+			}
+
+			for (var c = 0; c < columns.length; c++) {
+				if(!columns[c].visible){
+					continue
+				}
+
+				var column = columns[c].columns;
+
+				for (var i = leftLimit; i < rightLimit; i++) {
+					var y = column[i];
+
+					if (y < newLowValue) newLowValue = y;
+					if (y > newTopValue) newTopValue = y;
+				}
+			}
+			if(withoutAnimation){
+				obj[_low].value = newLowValue
+				obj[_top].value = newTopValue
+				obj[_low].fromValue = newLowValue
+				obj[_top].fromValue = newTopValue
+			}
+			else{
+				if(newLowValue !== obj[_low].value){
+					obj[_low] = { value: obj[_low].value, fromValue: obj[_low].value, toValue: newLowValue, shouldUpdate: true, duration: 300, animationStart: appTime }
+				}
+
+				if(newTopValue !== obj[_top].value){
+					obj[_top] = { value: obj[_top].value, fromValue: obj[_top].value, toValue: newTopValue, shouldUpdate: true, duration: 300, animationStart: appTime }
+				}
+			}
+
+			return { obj: obj, newLowValue: newLowValue, newTopValue: newTopValue }
+		}
+
+		this.setScaleRatio = function(obj){
+
+			if(!obj) obj = this
+
+			var labelsDiff = obj.top.value - obj.low.value
+			var mapLabelsDiff = obj.totalMaxLimit.value - obj.totalMinLimit.value
+
+			obj.scale = -(chartHeight - Y_LABELS_TP) / labelsDiff
+			obj.offset = chartHeight - obj.low.value * obj.scale
+
+			obj.mapScale = -previewHeight / mapLabelsDiff
+			obj.mapOffset = HEIGHT - obj.totalMinLimit.value * obj.mapScale
+
+			return obj
+		}
+
+		this.handleLabels = function(){
+			return null
+		}
+
+		this.preRender = function(){
+
+			if(type === 'line'){
+				for(var i = 0; i < this.columns.length; i++){
+					if(this.columns[i].opacity.shouldUpdate){
+						var a = this.animate(this.columns[i].opacity)
+						a === 'didEnd' ? this.columns[i].opacity.shouldUpdate = false : this.columns[i].opacity.value = a
+
+						didUpdate = true
+					}
+				}
+			}
+
+			if(y_scaled){
+				var left = this.ownScales[0]
+				var right = this.ownScales[1]
+
+				this.animateLowAndTop(left)
+				this.animateLowAndTop(right)
+				this.animateText(left)
+				this.animateText(right)
+			}
+			else{
+				this.animateLowAndTop(this)
+				this.animateText(this)
+			}
+		}
+
+		this.animateLowAndTop = function(obj){
+			if(obj.low.shouldUpdate){
+				var a = this.animate(obj.low)
+				a === 'didEnd' ? obj.low.shouldUpdate = false : obj.low.value = a
+				this.setScaleRatio(obj)
+				didUpdate = true
+			}
+
+			if(obj.top.shouldUpdate){
+				var a = this.animate(obj.top)
+				a === 'didEnd' ? obj.top.shouldUpdate = false : obj.top.value = a
+				this.setScaleRatio(obj)
+				didUpdate = true
+			}
+
+			if(obj.totalMinLimit.shouldUpdate){
+				var a = this.animate(obj.totalMinLimit)
+				a === 'didEnd' ? obj.totalMinLimit.shouldUpdate = false : obj.totalMinLimit.value = a
+				this.setScaleRatio(obj)
+				didUpdate = true
+			}
+
+			if(obj.totalMaxLimit.shouldUpdate){
+				var a = this.animate(obj.totalMaxLimit)
+				a === 'didEnd' ? obj.totalMaxLimit.shouldUpdate = false : obj.totalMaxLimit.value = a
+				this.setScaleRatio(obj)
+				didUpdate = true
+			}
+		}
+
+
+		this.animateText = function(obj){
+			if(obj.animatatedTextDelta.shouldUpdate){
+				var a = this.animate(obj.animatatedTextDelta)
+
+				if(a === 'didEnd') obj.animatatedTextDelta.shouldUpdate = false
+				else obj.animatatedTextDelta.value = a
+
+				didUpdate = true
+			}
+
+			if(obj.animatatedCurrentTextDelta.shouldUpdate){
+				var a = this.animate(obj.animatatedCurrentTextDelta)
+
+				if(a === 'didEnd') obj.animatatedCurrentTextDelta.shouldUpdate = false
+				else obj.animatatedCurrentTextDelta.value = a
+
+				didUpdate = true
+			}
+
+			if(obj.currentTextOpacity.shouldUpdate){
+				var a = this.animate(obj.currentTextOpacity)
+
+				if(a === 'didEnd') obj.currentTextOpacity.shouldUpdate = false
+				else obj.currentTextOpacity.value = a
+
+				didUpdate = true
+			}
+
+			if(obj.prevTextOpacity.shouldUpdate){
+				var a = this.animate(obj.prevTextOpacity)
+
+				if(a === 'didEnd') obj.prevTextOpacity.shouldUpdate = false
+				else obj.prevTextOpacity.value = a
+
+				didUpdate = true
+			}
+		}
+
+		this.render = function(){
+
+			if(y_scaled){
+
+				var left = this.ownScales[0]
+				var right = this.ownScales[1]
+
+				if(left && left.visible){
+					this.renderYLegend(left, 'left', true, left.color)
+				}
+				if(right && right.visible){
+
+					var withLines = false
+					if(!left.visible){
+						withLines = true
+					}
+
+					this.renderYLegend(right, 'right', withLines, right.color)
+				}
+			}
+			else{
+				this.renderYLegend(this, 'left', true, '#8E8E93')
+			}	
+		}
+
+		this.renderYLegend = function(obj, side, withLines, textColor){
+
+			if(!side){
+				side = 'left'
+			}
+
+			var oldLabelsDiff = obj.top.fromValue - obj.low.fromValue
+			var textDelta = Math.floor(oldLabelsDiff / Math.floor(yLegendLabelsCount));
+			var oldTextScale = -(chartHeight - Y_LABELS_TP) / oldLabelsDiff
+			var oldTextOffset = chartHeight - obj.low.fromValue * oldTextScale
+
+			var newLabelsDiff = obj.currentTextTop - obj.currentTextLow
+			var newTextDelta = Math.floor(newLabelsDiff / Math.floor(yLegendLabelsCount));
+
+			var xOffset = 0
+
+			if(side === 'right'){
+				xOffset = WIDTH - 30 * dpx
+			}
+
+			for (var i = 0; i < yLegendLabelsCount; i++) {
+
+				var newLabelValue = obj.currentTextLow + newTextDelta * i 
+				var newY = obj.low.fromValue + textDelta * i
+				var newYInPx = timeStampToPX(newY, oldTextScale, oldTextOffset)
+				newYInPx += obj.animatatedCurrentTextDelta.value 
+				var newFormatedLabel = this.formatNumber(newLabelValue, true)
+
+				ctx.fillStyle = textColor
+
+				ctx.globalAlpha = obj.currentTextOpacity.value
+				ctx.fillText(newFormatedLabel, xOffset, newYInPx - Y_LABELS_BP);
+
+				if(withLines){
+					ctx.globalAlpha = ctx.globalAlpha / 10
+					this.drawLine(i, newYInPx)
+				}
+
+
+				if(obj.prevTextOpacity.value === 0){
+					continue
+				}
+
+				var oldLabelValue = obj.low.fromValue + textDelta * i
+				var oldY = obj.low.fromValue + textDelta * i
+				var oldYInPx = timeStampToPX(oldY, oldTextScale, oldTextOffset)
+				oldYInPx += obj.animatatedTextDelta.value
+				var oldFormatedLabel = this.formatNumber(oldLabelValue, true)
+
+				ctx.globalAlpha = obj.prevTextOpacity.value
+				ctx.fillText(oldFormatedLabel, xOffset, oldYInPx - Y_LABELS_BP);
+
+				if(withLines){
+					ctx.globalAlpha = ctx.globalAlpha / 10
+					this.drawLine(i, oldYInPx)
+				}
+			}
+		}
+
+		this.animate = function(item){
+			if(item.toValue === item.value){
+				return 'didEnd'
+			}
+
+			var timeDiff = appTime - item.animationStart
+
+			if(item.delay) timeDiff -= item.delay
+
+	        var progress = timeDiff / item.duration;
+	        if (progress < 0) progress = 0;
+	        if (progress > 1) progress = 1;
+
+	        var ease = -progress * (progress - 2);
+
+	        return item.fromValue + (item.toValue - item.fromValue) * ease;
+		}
+
+		this.drawLine = function(index, y){
+			ctx.lineWidth = 1
+			ctx.strokeStyle = '#182D3B'
+
+			ctx.beginPath();
+			ctx.moveTo(0, y);
+			ctx.lineTo(WIDTH, y);
+			ctx.stroke();
+		}
+
+		this.formatNumber = function(n, short) {
+			var abs = Math.abs(n);
+			if (abs > 1000000000 && short) return (n / 1000000000).toFixed(2) + 'B';
+			if (abs > 1000000 && short) return (n / 1000000).toFixed(2) + 'M';
+			if (abs > 1000 && short) return (n / 1000).toFixed(1) + 'K';
+
+			if (abs > 1) {
+				var s = abs.toFixed(0);
+				var formatted = n < 0 ? '-' : '';
+				for (var i = 0; i < s.length; i++) {
+					formatted += s.charAt(i);
+					if ((s.length - 1 - i) % 3 === 0) formatted += ' ';
+				}
+				return formatted;
+			}
+
+			return n.toString()
+		}
+	}
+
+	function AreaAxisY(){
+		AxisY.call(this)
+
+		this.low = 0
+		this.top = 100
+
+		this.scale = -(chartHeight - Y_LABELS_TP) / 100
+		this.offset = chartHeight
+
+		this.mapScale = -previewHeight / 100
+		this.mapOffset = HEIGHT
 
 		this.calculatePercentage = function(labelIndex){
 
@@ -697,251 +1271,53 @@ function TelegramGerraCharts(initialData, type){
 			return { labels: arr2, percent: percent }			
 		}
 
-		this.setTotalLimit = function(){
-			
-			var columns = this.columns
 
-			if(percentage){
-				this.totalMaxLimit = 100
-				this.totalMinLimit = 0
+		this.handleLabels = function(){
+			for(var i = 0; i < xAxis.labels.length; i++){
 
-				for(var i = 0; i < 365; i++){
+				var calculatatedLabels = this.calculatePercentage(i)
 
-					var calculatatedLabels = this.calculatePercentage(i)
-					var percent = calculatatedLabels.percent
-					var labels = calculatatedLabels.labels
-					var result = []
+				var percent = calculatatedLabels.percent
+				var labels = calculatatedLabels.labels
+				var result = []
 
-					for(var v = 0; v < labels.length; v ++){
+				for(var v = 0; v < labels.length; v ++){
 
-						var t = labels[v] / percent * 100
+					var t = labels[v] / percent * 100
 
-						if(this._stacked[i]){
-							var prevValue = this._stacked[i][v].value
+					if(this._stacked[i]){
+						var prevValue = this._stacked[i][v].value
 
-							if(prevValue !== t){
-								if(!this.labelsAnimated) this.labelsAnimated = true
-								result[v] = { value: prevValue, toValue: t, fromValue: prevValue, duration: 300, needAnimate: true }
-							}
-							else{
-								result[v] = { value: t }
-							}
+						if(prevValue !== t){
+							if(!this.labelsAnimated) this.labelsAnimated = true
+								result[v] = { animationStart: appTime, value: prevValue, toValue: t, fromValue: prevValue, duration: 300, shouldUpdate: true }
 						}
 						else{
 							result[v] = { value: t }
 						}
 					}
-
-					this._stacked[i] = result
-				}
-			}
-			else if(stacked){
-
-				this.totalMaxLimit = 0
-
-				for(var i = 0; i < xAxis.labels.length; i++){
-
-					for(var c = columns.length - 1; c >= 0; c--){
-
-						var newValue = 0
-
-						for(var z = c; z >= 0; z--){
-
-							var zCol = columns[z]
-
-							if(!zCol.visible){
-								continue
-							}
-							else{
-								newValue += columns[z].columns[i]
-							}
-						}
-
-						if(!this._stacked[c]) this._stacked[c] = []
-						if(!this._stacked[c][i]) this._stacked[c][i] = { value: newValue }
-
-						var prevValue = this._stacked[c][i].value
-
-						if(newValue !== prevValue){
-							if(!this.labelsAnimated) this.labelsAnimated = true
-							this._stacked[c][i] = { value: prevValue, toValue: newValue, fromValue: prevValue, duration: 300, needAnimate: true }
-						}
-						else{
-							this._stacked[c][i] = { value: newValue }
-						}
-
-						if(newValue > this.totalMaxLimit) this.totalMaxLimit = newValue
-
+					else{
+						result[v] = { value: t }
 					}
 				}
+
+				this._stacked[i] = result
 			}
-			else{
-				var visibleItems = []
-
-				for(var i = 0; i < columns.length; i++){
-					var column = columns[i]
-
-					if(column.visible === false){
-						continue
-					}
-
-					visibleItems = visibleItems.concat(column.columns)
-				}
-
-				this.totalMaxLimit = Math.max.apply(null, visibleItems)
-				this.totalMinLimit = Math.min.apply(null, visibleItems)
-			}
-
-
-			this.setMapDifference()
 		}
 
 		this.setLowAndTop = function(){
-			if(percentage){
-				this.top = 100
-			}
-			else if(stacked){
-
-			}
+			return null
 		}
 
-		this.setMapDifference = function(){
-			var mapDiff = this.totalMaxLimit - this.totalMinLimit
-
-			if(mapDiff !== this.mapDiff.value){
-				this.mapDiff = { value: this.mapDiff.value, fromValue: this.mapDiff.value, toValue: mapDiff, needAnimate: true, duration: 300, animationStart: appTime }
-			}
+		this.setTotalLimit = function(){
+			return null
 		}
 
-		this.setDifference = function(){
-			var labelsDiff = this.top - this.low
-
-			if(labelsDiff < 0){
-				labelsDiff = 0
-			}
-			
-			if(this.labelsDiff.value !== labelsDiff){
-				this.labelsDiff.toValue = labelsDiff
-				this.labelsDiff.fromValue = this.labelsDiff.value
-				this.labelsDiff.shouldUpdate = true
-				this.labelsDiff.animationStart = appTime
-				this.labelsDiff.duration = 300
-			}
+		this.setScaleRatio = function(){
+			return null
 		}
 
-		this.updateLimits = function(){
-
-			this.low = 0
-			this.top = -Infinity
-
-			if(type === 'line'){
-				this.low = Infinity
-			}
-
-			if(percentage){
-				this.top = 100
-			}
-			else if(stacked){
-
-				var currentMax = 0
-
-				for (var c = xAxis.currentDiffLeftPositionIndex; c < xAxis.currentDiffRightPositionIndex; c++) {
-					for(var z = 0; z < this._stacked.length; z++){
-						if(this._stacked[z][c].value > currentMax) currentMax = this._stacked[z][c].value
- 					}
-				}
-
-				this.top = currentMax
-			}
-			else if(y_scaled){
-				for(var c = 0; c < this.columns.length; c++){
-
-					var column = this.columns[c].columns;
-
-					var ownOffset = {
-						low: Infinity,
-						top: -Infinity,
-						scale: 0,
-						offset: 0,
-						previewScale: Infinity,
-						previewOffset: -Infinity,
-						itemsDiff: 1,
-						textOpacity: 1,
-						visible: this.columns[c].visible
-					}
-
-					if(this.ownScales[c]){
-						ownOffset.low = Infinity
-						ownOffset.top = -Infinity
-						ownOffset.visible = this.columns[c].visible
-					}
-
-					for (var i = xAxis.currentDiffLeftPositionIndex; i < xAxis.currentDiffRightPositionIndex; i++) {
-						var y = column[i];
-
-						if(y < ownOffset.low){
-							ownOffset.low = y
-						}
-
-						if(y > ownOffset.top){
-							ownOffset.top = y
-						} 
-					}
-
-					var itemsDiff = ownOffset.top - ownOffset.low
-					ownOffset.fontColor = this.columns[c].color
-
-					ownOffset.itemsDiff = itemsDiff
-					ownOffset.scale = -chartHeight / itemsDiff;
-					ownOffset.offset = chartHeight - ownOffset.low * ownOffset.scale;
-
-					var previewDiff = Math.max.apply(null, column) - Math.min.apply(null, column)
-					ownOffset.previewScale = -previewHeight / previewDiff
-					ownOffset.previewOffset = HEIGHT - Math.min.apply(null, column) * ownOffset.previewScale
-
-
-					this.ownScales[c] = ownOffset
-				}
-			}
-			else{
-
-				for (var c = 0; c < this.columns.length; c++) {
-					if(!this.columns[c].visible){
-						continue
-					}
-
-					var column = this.columns[c].columns;
-
-					for (var i = xAxis.currentDiffLeftPositionIndex; i < xAxis.currentDiffRightPositionIndex; i++) {
-						var y = column[i];
-
-						if (y < this.low) this.low = y;
-						if (y > this.top) this.top = y;
-					}
-				}
-			}
-
-			this.setDifference()
-		}
-
-		this.render = function(){
-			ctx.fillStyle = "#8E8E93"
-
-
-			if(this.labelsDiff.shouldUpdate){
-				var a = this.animate(this.labelsDiff)
-				if(a === 'didEnd'){
-					this.labelsDiff.shouldUpdate = false
-				}
-				else{
-					if(type === 'line' && !y_scaled){
-					}
-					this.labelsDiff.value = a
-				}				
-
-				didUpdate = true
-			}
-
+		this.preRender = function(){
 			if(this.labelsAnimated){
 
 				var _i = null
@@ -952,262 +1328,176 @@ function TelegramGerraCharts(initialData, type){
 					for(var c = 0; c < current.length; c++){
 						var item = current[c]
 
-						if(item.needAnimate){
-							_c = c
-							if(!item.animationStart){
-								item.animationStart = appTime
-							}
-							var q = this.animate(item)
-							if(q === 'didEnd'){
-								this._stacked[i][c].needAnimate = false
+						if(!item){
+							continue
+						}
 
-								if(i + 1 == this._stacked.length && c === _c){
+						if(item.shouldUpdate){
+							_c = c
+							var a = this.animate(item)
+							if(a === 'didEnd'){
+								this._stacked[i][c].shouldUpdate = false
+
+								if(i + 1 === this._stacked.length && c === _c){
 									this.labelsAnimated = false
 								}
 							}else{
-								this._stacked[i][c].value = q
+								this._stacked[i][c].value = a
 							}
 						}	
 					}
 				}
 
-				this.setMapDifference()
-				this.updateLimits()
 				didUpdate = true
 			}
+		}
 
-			if(this.mapDiff.needAnimate){
-				if(!this.mapDiff.animationStart){
-					this.mapDiff.animationStart = appTime
+
+		this.render = function(){
+			var textDelta = Math.floor(100 / Math.floor(yLegendLabelsCount));
+
+			for (var i = 0; i < yLegendLabelsCount; i++) {
+
+				var value = textDelta * i 
+				var y = textDelta * i
+				var yInPx = timeStampToPX(y, this.scale, this.offset)
+
+				ctx.fillStyle = '#182D3B'
+				ctx.globalAlpha = 1
+				ctx.fillText(this.formatNumber(value, true), 0, yInPx - Y_LABELS_BP);
+
+				ctx.globalAlpha = ctx.globalAlpha / 10
+				this.drawLine(i, yInPx)
+			}
+		}
+	}
+
+
+	function StackedBarAxisY(){
+		AxisY.call(this)
+
+		this.stackedWithoutAnim = []
+
+		this.setTotalLimit = function(){
+			var currentMax = -Infinity
+
+			for (var c = 0; c < xAxis.labels.length; c++) {
+				for(var z = 0; z < this._stacked.length; z++){
+					if(this._stacked[z][c].value > currentMax) currentMax = this._stacked[z][c].value
 				}
-				var q = this.animate(this.mapDiff)
-
-				if(q === 'didEnd'){
-					this.mapDiff.needAnimate = false
-				}else{
-					this.mapDiff.value = q
-				}
-
-				didUpdate = true
 			}
 
-			if(this.textAnimation){
-				var d = this.textAnimation.animate(appTime)
+			if(currentMax !== this.totalMaxLimit.value){
+				this.totalMaxLimit.value = currentMax
+			}
+		}
 
-				if(d === false){
-					this.textAnimation = null
+		this.setLowAndTop = function(withoutAnimation){
+			var currentMax = 0
+			var nextMax = 0
+
+			for (var c = xAxis.currentDiffLeftPositionIndex; c < xAxis.currentDiffRightPositionIndex; c++) {
+				for(var z = 0; z < this._stacked.length; z++){
+					if(this._stacked[z][c].value > currentMax) currentMax = this._stacked[z][c].value
+					if(this.stackedWithoutAnim[z][c] > nextMax) nextMax = this.stackedWithoutAnim[z][c]
 				}
-
-				didUpdate = true
 			}
 
-			if(this.textFadeOut){
-
-				var d = this.textFadeOut.animate(appTime)
-
-				if(d === false){
-					this.textFadeOut = null
+			if(currentMax !== this.top.value){
+				if(withoutAnimation){
+					this.top.value = currentMax
+					this.low.value = 0
+					this.low.fromValue = 0
+					this.top.fromValue = currentMax
 				}
 				else{
-					this.prevTextOpacity = d
-				}
-
-				didUpdate = true
-			}
-
-			if(this.textFadeIn){
-
-
-				var d = this.textFadeIn.animate(appTime)
-
-				if(d === false){
-					this.textFadeIn = null
-				}
-				else{
-					this.textOpacity = d
-				}
-				didUpdate = true
-			}
-
-			if(y_scaled){
-				if(this.ownScales){
-					for(var i = 0; i < this.ownScales.length; i++){
-						var current = this.ownScales[i]
-
-						if(current.textAnimation){
-							var d = current.textAnimation.animate(appTime)
-
-							if(d === false){
-								current.textAnimation = null
-							}
-
-							didUpdate = true
-						}
-
-						if(current.textFadeOut){
-							var d = current.textFadeOut.animate(appTime)
-
-							if(d === false){
-								current.textFadeOut = null
-							}
-							else{
-								current.prevTextOpacity = d
-							}
-
-							didUpdate = true
-						}
-
-						if(current.textFadeIn){
-							var d = current.textFadeIn.animate(appTime)
-
-							if(d === false){
-								current.textFadeIn = null
-							}
-							else{
-								current.textOpacity = d
-							}
-							didUpdate = true
-						}
-
-						if(current.animation){
-
-							var d = current.animation.animate(appTime)
-
-							if(d === false){
-								current.animation = null
-							}else{
-								current.itemsDiff = d
-							}
-
-							didUpdate = true
-						}
-
-						current.scale = -(chartHeight - PREVIEW_PT) / current.itemsDiff;
-						current.offset = chartHeight - current.low * current.scale;
-					}
+					this.top = { value: this.top.value, fromValue: this.top.value, toValue: currentMax, shouldUpdate: true, duration: 300, animationStart: appTime }
 				}
 			}
-			
-			var textDelta = Math.floor(this.labelsDiff.value / Math.floor(yLablesOffset));
 
-			this.scale = -chartHeight / this.labelsDiff.value;
-			this.offset = chartHeight - this.low * this.scale;
+			this.handleLegendLabelsPosition(nextMax, 0, this)
+		}
 
-			this.mapScale = -previewHeight / this.mapDiff.value
-			this.mapOffset = HEIGHT - this.totalMinLimit * this.mapScale
+		this.handleLabels = function(){
 
-			if(y_scaled){
+			var columns = this.columns
 
-				var left = this.ownScales[0]
-				var right = this.ownScales[1]
+			for (var i = 0; i < xAxis.labels.length; i++) {
+				for(var c = columns.length - 1; c >= 0; c--){
 
-				if(left && left.visible){
+					var newValue = 0
 
-					var textDelta = Math.floor(left.itemsDiff / Math.floor(yLablesOffset));
-					var textScale = -chartHeight / left.itemsDiff;
-					var textOffset = chartHeight - left.low * textScale;
+					for(var z = c; z >= 0; z--){
 
-					for (var i = 0; i < yLablesOffset; i++) {
+						var zCol = columns[z]
 
-						var val = left.low + textDelta * i
-						var newY = timeStampToPX(val, textScale, textOffset);
-
-						if(val === 0){
-							ctx.fillText(formatNumber(val, true), 0, 0 - Y_LABELS_BP);
+						if(!zCol.visible){
 							continue
 						}
-
-						ctx.globalAlpha = 0.1
-						drawLine(i, newY)
-
-						ctx.fillStyle = left.fontColor
-						ctx.globalAlpha = left.textOpacity
-						ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
+						else{
+							newValue += columns[z].columns[i]
+						}
 					}
-				}
-				if(right && right.visible){
 
-					for (var i = 0; i < yLablesOffset; i++) {
+					if(!this._stacked[c]) this._stacked[c] = []
+					if(!this._stacked[c][i]) this._stacked[c][i] = { value: newValue }
 
-						var textDelta = Math.floor(right.itemsDiff / Math.floor(yLablesOffset));
-						var textScale = -chartHeight / right.itemsDiff;
-						var textOffset = chartHeight - right.low * textScale;
+					if(!this.stackedWithoutAnim[c]) this.stackedWithoutAnim[c] = []
+					this.stackedWithoutAnim[c][i] = newValue
 
-						var val = right.low + textDelta * i
-						var newY = timeStampToPX(val, textScale, textOffset);
+					var prevValue = this._stacked[c][i].value
 
-						ctx.fillStyle = right.fontColor
+					if(newValue !== prevValue){
 
-						ctx.globalAlpha = right.textOpacity
-						ctx.fillText(formatNumber(val, true), WIDTH - Y_LABELS_RP, newY - Y_LABELS_BP);
-
+						if(!this.labelsAnimated) this.labelsAnimated = true
+						this._stacked[c][i] = { value: prevValue, toValue: newValue, fromValue: prevValue, duration: 300, shouldUpdate: true, animationStart: appTime }
+					}
+					else{
+						this._stacked[c][i] = { value: newValue }
 					}
 				}
 			}
+		}
 
-			else{
+		this.preRender = function(){ 
+			if(this.top.shouldUpdate){
+				var a = this.animate(this.top)
+				a === 'didEnd' ? this.top.shouldUpdate = false : this.top.value = a
+				this.setScaleRatio()
+				didUpdate = true
+			}
 
-				for (var i = 0; i < yLablesOffset; i++) {
-					var val = this.low + textDelta * i
-					var newY = timeStampToPX(val, this.scale, this.offset);
+			if(this.labelsAnimated){
+				for(var i = 0; i < this._stacked.length; i++){
+					var current = this._stacked[i]
+					for(var c = 0; c < current.length; c++){
+						var item = current[c]
 
-					if(val === 0){
-						ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
-						continue
+						if(!item) continue
+						
+						if(item.shouldUpdate){
+							_c = c
+							var a = this.animate(item)
+							if(a === 'didEnd'){
+								this._stacked[i][c].shouldUpdate = false
+								if(i + 1 === this._stacked.length && c === _c) this.labelsAnimated = false
+							}else{
+								this._stacked[i][c].value = a
+							}
+						}	
 					}
-
-					ctx.globalAlpha = 0.1
-					drawLine(i, newY)
-
-					ctx.globalAlpha = 1
-					ctx.fillText(formatNumber(val, true), 0, newY - Y_LABELS_BP);
 				}
-			}
-		}
 
-		this.animate = function(item){
+				this.setTotalLimit()
+				this.setLowAndTop(true)
+				this.setScaleRatio()
 
-			if(item.toValue === item.value){
-				return 'didEnd'
-			}
-
-	        var progress = (appTime - item.animationStart) / item.duration;
-	        if (progress < 0) progress = 0;
-	        if (progress > 1) progress = 1;
-
-	        var ease = -progress * (progress - 2);
-
-	        return item.fromValue + (item.toValue - item.fromValue) * ease;
-		}
-
-		function drawLine(index, y){
-			ctx.lineWidth = 1
-			ctx.strokeStyle = '#182D3B'
-
-			ctx.beginPath();
-			ctx.moveTo(0, y);
-			ctx.lineTo(WIDTH, y);
-			ctx.stroke();
-		}
-
-		function formatNumber(n, short) {
-			var abs = Math.abs(n);
-			if (abs > 1000000000 && short) return (n / 1000000000).toFixed(2) + 'B';
-			if (abs > 1000000 && short) return (n / 1000000).toFixed(2) + 'M';
-			if (abs > 1000 && short) return (n / 1000).toFixed(1) + 'K';
-
-			if (abs > 1) {
-				var s = abs.toFixed(0);
-				var formatted = n < 0 ? '-' : '';
-				for (var i = 0; i < s.length; i++) {
-					formatted += s.charAt(i);
-					if ((s.length - 1 - i) % 3 === 0) formatted += ' ';
-				}
-				return formatted;
+				didUpdate = true
 			}
 
-			return n.toString()
+			this.animateText(this)
 		}
+
 	}
 
 	function AxisX(){
@@ -1249,6 +1539,10 @@ function TelegramGerraCharts(initialData, type){
 			left = Math.ceil(pxToTs(left, this.scaleRatio, this.offset))
 			right = Math.floor(pxToTs(right, this.scaleRatio, this.offset))
 
+			dateRangeLeft.innerHTML = formatDate(left, 'topline')
+			dateRangeRight.innerHTML = formatDate(right, 'topline')
+
+
 			this.currentDiff = right - left
 
 			if(type === 'line'){
@@ -1275,7 +1569,6 @@ function TelegramGerraCharts(initialData, type){
 					}
 					else{
 						this.textFade = new Animation(0, 1, 300, appTime)
-						
 					}
 				}
 
@@ -1292,7 +1585,6 @@ function TelegramGerraCharts(initialData, type){
 		}
 
 		this.setScaleRatio = function(){
-
 			this.scaleRatio = WIDTH / this.tsAbsoluteDifference
 
 			this.setOffset()
@@ -1392,6 +1684,7 @@ function TelegramGerraCharts(initialData, type){
 				this.hovered = null
 				this.hoveredInPX = null
 
+				modal.style.display = 'none'
 				didUpdate = true
 
 				return
@@ -1399,6 +1692,20 @@ function TelegramGerraCharts(initialData, type){
 
 			this.hoveredInPX = currentInPx
 			this.hovered = Math.floor(pxToTs(currentInPx, this.currentDiffScale, this.currentDiffOffset))
+
+
+			var modalBounds = modal.getBoundingClientRect()
+			var modalX = (currentInPx / dpx) + MODAL_ML
+			if (modalX < 0) modalX = 0
+
+			if (modalX + modalBounds.width > canvasBounds.width) modalX = canvasBounds.width - modalBounds.width + 10
+			modal.style.display = 'block'
+			modal.style.left = modalX + 'px';
+
+			var modalY = mouseY / dpx + 20 - modalBounds.height - MODAL_MT
+			if(modalY < 0) modalY = mouseY / dpx + 20 + MODAL_MT
+			modal.style.top = modalY + 'px'
+
 
 			didUpdate = true
 		}
@@ -1608,7 +1915,7 @@ function TelegramGerraCharts(initialData, type){
 
 					var leftOffset = timeStampToPX(item, this.currentDiffScale, this.currentDiffOffset)
 
-					ctx.fillText(formatDate(this.labels[i], true), leftOffset, chartHeight + X_TEXT_PT);
+					ctx.fillText(formatDate(this.labels[i], 'xLegend'), leftOffset, chartHeight + X_TEXT_PT);
 				}
 			}
 
@@ -1625,18 +1932,34 @@ function TelegramGerraCharts(initialData, type){
 
 				var leftOffset = timeStampToPX(item, this.currentDiffScale, this.currentDiffOffset)
 
-				ctx.fillText(formatDate(this.labels[i], true), leftOffset, chartHeight + X_TEXT_PT);
+				ctx.fillText(formatDate(this.labels[i], 'xLegend'), leftOffset, chartHeight + X_TEXT_PT);
 			}
 		}
 
-		var MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+		var SHORT_MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+		var FULL_MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 		var DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-		function formatDate(time, short) {
+		function formatDate(time, type) {
 			var date = new Date(time);
-			var s = MONTH_NAMES[date.getMonth()] + ' ' + date.getDate();
-			if (short) return s;
-			return DAY_NAMES[date.getDay()] + ', ' + s;
+			var month = ''
+
+			if(type === 'topline') month = FULL_MN[date.getMonth()]
+			else month = SHORT_MN[date.getMonth()]
+			
+			var s = month + ' ' + date.getDate();
+
+			if(type === 'topline'){
+				s = date.getDate() + ' ' + month + ' ' + date.getFullYear()
+			}
+			else if(type === 'xLegend'){
+				s = s
+			}
+			else if(type === 'modal'){
+				s = s + DAY_NAMES[date.getDay()] + ', ' + s;
+			}
+
+			return s
 		}
 
 	}
