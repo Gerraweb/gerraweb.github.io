@@ -1874,7 +1874,7 @@ function TelegramGerraCharts(initialData, type, title){
 						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, y)
 						ctx.lineTo(x + this.stepTsDiff * this.currentDiffScale, chartHeight)
 			
-						ctx.fillStyle = color
+						ctx.fillStyle = '#558DED'
 						ctx.fill()
 
 					}
