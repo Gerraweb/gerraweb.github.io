@@ -20,6 +20,7 @@ body{
 	-ms-flex-wrap: wrap;
 	-o-flex-wrap: wrap;
 	flex-wrap: wrap;
+	overflow-x: hidden;
 }
 
 .wrapper{
@@ -221,4 +222,9 @@ canvas{
 	.wrapper{
 		width: 100%;
 	}
+
+	.topline-container span{
+		font-size: 12px;
+	}
+
 }
