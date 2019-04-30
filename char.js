@@ -4,11 +4,29 @@ function TelegramGerraCharts(initialData, type, title){
 	var percentage = false
 	var y_scaled = false
 
-	var wrapper = document.createElement('div'); 
+	var colorScheme = {
+		mainColor: '#fff',
+		scrollBackground: '#E2EEF9',
+		scrollSelect: '#C0D1E1',
+		linesColor: '#182D3B',
+		yTextColor: '#8E8E93',
+		xTextColor: '#8E8E93',
+		yTextAlpha: 1,
+		xTextAlpha: 1
+	}
 
+	if(type === 'bar' || type === 'area'){
+		colorScheme.yTextColor = '#757575'
+	}
+
+	var wrapper = document.createElement('div'); 
 	wrapper.classList.add('wrapper')
 
-	document.body.appendChild(wrapper)
+	var chartsContainer = document.getElementById('charts--container')
+
+	
+
+	chartsContainer.appendChild(wrapper)
 
 	var modal = document.createElement('div')
 	modal.classList.add('modal--contaniner')
@@ -107,6 +125,42 @@ function TelegramGerraCharts(initialData, type, title){
 
 
 	setInitialData()
+
+	this.changeTheme = function(theme){
+		if(theme === 'light'){
+			colorScheme = {
+				mainColor: '#fff',
+				scrollBackground: '#E2EEF9',
+				scrollSelect: '#C0D1E1',
+				linesColor: '#182D3B',
+				yTextColor: '#8E8E93',
+				xTextColor: '#8E8E93',
+				yTextAlpha: 1,
+				xTextAlpha: 1
+			}
+			if(type === 'bar' || type === 'area'){
+				colorScheme.yTextColor = '#757575'
+			}
+		}
+		else{
+			colorScheme = {
+				mainColor: '#242F3E',
+				scrollBackground: '#304259',
+				scrollSelect: '#56626D',
+				linesColor: '#FFFFFF',
+				yTextColor: '#A3B1C2',
+				xTextColor: '#A3B1C2',
+				yTextAlpha: 1,
+				xTextAlpha: 1
+			}
+			if(type === 'bar' || type === 'area'){
+				colorScheme.yTextColor = '#ECF2F8'
+			}
+		}
+
+		didUpdate = true
+	}
+
 
 	function onMouseMove(e){
 
@@ -263,12 +317,12 @@ function TelegramGerraCharts(initialData, type, title){
 
 		ctx.globalAlpha = 0.6
 
-		ctx.fillStyle = '#E2EEF9'
+		ctx.fillStyle = colorScheme.scrollBackground
 
 		ctx.fillRect(0, HEIGHT - previewHeight, xAxis.currentLeftPositionPx + PREVIEW_CW, previewHeight);
 		ctx.fillRect(xAxis.currentRightPositionPx - PREVIEW_CW, HEIGHT - previewHeight, WIDTH - xAxis.currentRightPositionPx + PREVIEW_CW, previewHeight);
 
-		ctx.fillStyle = '#C0D1E1'
+		ctx.fillStyle = colorScheme.scrollSelect
 
 		ctx.globalAlpha = 1
 
@@ -311,7 +365,7 @@ function TelegramGerraCharts(initialData, type, title){
 		ctx.beginPath();
 
 		ctx.globalAlpha = 1
-		ctx.strokeStyle = '#fff'
+		ctx.strokeStyle = colorScheme.mainColor
 
 		ctx.lineWidth = 4 * dpx
 
@@ -970,8 +1024,8 @@ function TelegramGerraCharts(initialData, type, title){
 						obj.animatatedCurrentTextDelta = { value: Y_LABELS_OFFSET + Y_LABELS_BP, fromValue: Y_LABELS_TP + Y_LABELS_OFFSET + Y_LABELS_BP, toValue: 0, shouldUpdate: true, duration: 300, animationStart: appTime }
 					}
 
-					obj.prevTextOpacity = { value: 1, fromValue: 1, toValue: 0, shouldUpdate: true, duration: 200, animationStart: appTime }
-					obj.currentTextOpacity = { value: 0, fromValue: 0, toValue: 1, shouldUpdate: true, duration: 300, animationStart: appTime }
+					obj.prevTextOpacity = { value: colorScheme.yTextAlpha, fromValue: colorScheme.yTextAlpha, toValue: 0, shouldUpdate: true, duration: 200, animationStart: appTime }
+					obj.currentTextOpacity = { value: 0, fromValue: 0, toValue: colorScheme.yTextAlpha, shouldUpdate: true, duration: 300, animationStart: appTime }
 				}
 			}
 
@@ -1172,7 +1226,7 @@ function TelegramGerraCharts(initialData, type, title){
 				}
 			}
 			else{
-				this.renderYLegend(this, 'left', true, '#8E8E93')
+				this.renderYLegend(this, 'left', true, colorScheme.yTextColor)
 			}	
 		}
 
@@ -1255,7 +1309,7 @@ function TelegramGerraCharts(initialData, type, title){
 
 		this.drawLine = function(index, y){
 			ctx.lineWidth = 1
-			ctx.strokeStyle = '#182D3B'
+			ctx.strokeStyle = colorScheme.linesColor
 
 			ctx.beginPath();
 			ctx.moveTo(0, y);
@@ -1411,8 +1465,8 @@ function TelegramGerraCharts(initialData, type, title){
 				var y = textDelta * i
 				var yInPx = timeStampToPX(y, this.scale, this.offset)
 
-				ctx.fillStyle = '#182D3B'
-				ctx.globalAlpha = 1
+				ctx.fillStyle = colorScheme.yTextColor
+				ctx.globalAlpha = colorScheme.yTextAlpha
 				ctx.fillText(this.formatNumber(value, true), 0, yInPx - Y_LABELS_BP);
 
 				ctx.globalAlpha = ctx.globalAlpha / 10
@@ -1613,10 +1667,10 @@ function TelegramGerraCharts(initialData, type, title){
 			if(textStep !== this.textStep){
 				if(this.textStep !== 1){
 					if(textStep > this.textStep){
-						this.textFade = new Animation(1, 0, 300, appTime)
+						this.textFade = new Animation(colorScheme.xTextAlpha, 0, 300, appTime)
 					}
 					else{
-						this.textFade = new Animation(0, 1, 300, appTime)
+						this.textFade = new Animation(0, colorScheme.xTextAlpha, 300, appTime)
 					}
 				}
 
@@ -1963,8 +2017,7 @@ function TelegramGerraCharts(initialData, type, title){
 			}
 
 
-			ctx.fillStyle = "#8E8E93"
-			ctx.globalAlpha = 1
+			ctx.fillStyle = colorScheme.xTextColor
 
 			if(this.textFade){
 				var d = this.textFade.animate(appTime)
@@ -1976,6 +2029,8 @@ function TelegramGerraCharts(initialData, type, title){
 				didUpdate = true
 			}
 
+			ctx.globalAlpha = colorScheme.xTextAlpha
+
 			if(this.textFade){
 				for (var i = this.labels.length; i >= 0; i -= this.prevTextStep) {
 
@@ -1983,7 +2038,7 @@ function TelegramGerraCharts(initialData, type, title){
 						ctx.globalAlpha = this.textFade.value
 					}
 					else{
-						ctx.globalAlpha = 1
+						ctx.globalAlpha = colorScheme.xTextAlpha
 					}
 
 					var item = this.labels[i]
@@ -2000,7 +2055,7 @@ function TelegramGerraCharts(initialData, type, title){
 					ctx.globalAlpha = this.textFade.value
 				}
 				else{
-					ctx.globalAlpha = 1
+					ctx.globalAlpha = colorScheme.xTextAlpha
 				}
 
 				var item = this.labels[i]
